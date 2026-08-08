@@ -22,6 +22,25 @@ import { buildClineHeaders } from "@/shared/utils/clineAuth";
 // OAuth provider test endpoints
 const OAUTH_TEST_CONFIG = {
   claude: { checkExpiry: true, refreshable: true },
+  gapgpt: {
+    // Usage is a lightweight authenticated endpoint and avoids sending an
+    // invalid empty Responses request, which GapGPT may answer with 502.
+    url: "https://gapgpt.app/api/v1/api/codex/usage",
+    method: "GET",
+    authHeader: "Authorization",
+    authPrefix: "Bearer ",
+    extraHeaders: { Accept: "application/json" },
+    refreshable: true,
+  },
+  gapcode: {
+    // GapCode shares GapGPT's authenticated usage endpoint.
+    url: "https://gapgpt.app/api/v1/api/codex/usage",
+    method: "GET",
+    authHeader: "Authorization",
+    authPrefix: "Bearer ",
+    extraHeaders: { Accept: "application/json" },
+    refreshable: true,
+  },
   codex: {
     url: "https://chatgpt.com/backend-api/codex/responses",
     method: "POST",
@@ -238,7 +257,7 @@ async function refreshOAuthToken(connection) {
       return { accessToken: data.access_token, expiresIn: data.expires_in, refreshToken: data.refresh_token || refreshToken };
     }
 
-    if (provider === "codex" || provider === "grok-cli" || provider === "xai") {
+    if (provider === "codex" || provider === "gapcode" || provider === "gapgpt" || provider === "grok-cli" || provider === "xai") {
       return await refreshProviderCredentials(provider, connection, console);
     }
 
@@ -794,7 +813,7 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
         );
         return { valid: exRes.ok, error: exRes.ok ? null : "Invalid Personal Access Token" };
       }
-case "llm7": {
+      case "llm7": {
         const baseUrl = connection.providerSpecificData?.baseUrl || "https://api.llm7.io/v1";
         const res = await fetchWithConnectionProxy(`${baseUrl.replace(/\/$/, "")}/models`, {
           headers: { Authorization: `Bearer ${connection.apiKey}` },
@@ -814,6 +833,12 @@ case "llm7": {
           },
         }, effectiveProxy);
         return { valid: res.ok, error: res.ok ? null : "Invalid API key", refreshed: false };
+      }
+      case "gapgpt": {
+        const res = await fetchWithConnectionProxy("https://api.gapgpt.app/v1/models", {
+          headers: { Authorization: `Bearer ${connection.apiKey}` },
+        }, effectiveProxy);
+        return { valid: res.ok, error: res.ok ? null : "Invalid API key" };
       }
       default:
         return { valid: false, error: "Provider test not supported" };
