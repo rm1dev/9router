@@ -44,6 +44,7 @@ export default {
     },
   },
   models: [
+    { id: "gpt-6-astra", name: "GPT-6 Astra" },
     { id: "gpt-5.6-sol", name: "GPT-5.6 Sol" },
     { id: "kimi-3", name: "Kimi 3" },
     { id: "glm-5.3", name: "GLM-5.3" },
