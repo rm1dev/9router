@@ -25,7 +25,11 @@ import { getClinepassUsage } from "./usage/clinepass.js";
 import { resolveQoderCredentials } from "./qoderModels.js";
 import { getGlmUsage } from "./usage/glm.js";
 import { getCommandCodeUsage } from "./usage/commandcode.js";
+<<<<<<< HEAD
 import { getSyntheticUsage } from "./usage/synthetic.js";
+=======
+import { getGapGptUsage } from "./usage/gapgpt.js";
+>>>>>>> 6cfcbf5e (feat(gapgpt): integrate GapGPT provider and quota tracking)
 import {
   getIflowUsage,
   getOllamaUsage,
@@ -74,6 +78,7 @@ const USAGE_HANDLERS = {
   cursor: (c) => getCursorUsage(c.accessToken, c.providerSpecificData, c.proxyOptions),
   // OAuth WorkOS JWT (workos: prefix) or plain ClinePass API key — same usage-limits URL.
   clinepass: (c) => getClinepassUsage(c.accessToken, c.apiKey, c.proxyOptions),
+  gapgpt: (c) => getGapGptUsage(c.accessToken || c.apiKey, c.proxyOptions),
 };
 
 // Qoder intl/CN share one usage path: PATs must be exchanged to a job token
