@@ -41,6 +41,13 @@ import {
   getXiaomiMimoSessionStatus,
   clearXiaomiMimoSession,
 } from "@/lib/oauth/utils/server";
+import {
+  startGapgptProxy,
+  stopGapgptProxy,
+  registerGapgptSession,
+  getGapgptSessionStatus,
+  clearGapgptSession,
+} from "@/lib/oauth/utils/gapgptProxy";
 import { detectIdeInstalled } from "@/lib/oauth/utils/ideDetect";
 import { ZED_HOSTED_CONFIG } from "@/lib/oauth/constants/oauth";
 
@@ -157,8 +164,8 @@ export async function GET(request, { params }) {
         const result = await startXiaomiMimoProxy();
         return NextResponse.json(result);
       }
-      if (!["codex", "xai"].includes(provider)) {
-        return NextResponse.json({ error: "Proxy only supported for codex/xai/trae/windsurf/zed" }, { status: 400 });
+      if (!["codex", "xai", "gapgpt"].includes(provider)) {
+        return NextResponse.json({ error: "Proxy only supported for codex/xai/trae/windsurf/zed/gapgpt" }, { status: 400 });
       }
       const appPort = searchParams.get("app_port");
       if (!appPort) {
@@ -169,11 +176,15 @@ export async function GET(request, { params }) {
       const redirectUri = searchParams.get("redirect_uri");
       const result = provider === "xai"
         ? await startXaiProxy(Number(appPort))
+        : provider === "gapgpt"
+        ? await startGapgptProxy(Number(appPort))
         : await startCodexProxy(Number(appPort));
       let serverSide = false;
       if (result.success && state && codeVerifier && redirectUri) {
         serverSide = provider === "xai"
           ? registerXaiSession({ state, codeVerifier, redirectUri })
+          : provider === "gapgpt"
+          ? registerGapgptSession({ state, codeVerifier, redirectUri })
           : registerCodexSession({ state, codeVerifier, redirectUri });
       }
       return NextResponse.json({ ...result, serverSide });
@@ -189,9 +200,10 @@ export async function GET(request, { params }) {
       else if (provider === "windsurf") session = getWindsurfSessionStatus(state);
       else if (provider === "zed") session = getZedSessionStatus(state);
       else if (provider === "xai") session = getXaiSessionStatus(state);
+      else if (provider === "gapgpt") session = getGapgptSessionStatus(state);
       else if (provider === "codex") session = getCodexSessionStatus(state);
       else if (provider === "xiaomi-mimo") session = getXiaomiMimoSessionStatus(state);
-      else return NextResponse.json({ error: "Poll only supported for codex/xai/trae/windsurf/zed/xiaomi-mimo" }, { status: 400 });
+      else return NextResponse.json({ error: "Poll only supported for codex/xai/trae/windsurf/zed/xiaomi-mimo/gapgpt" }, { status: 400 });
       if (!session) return NextResponse.json({ status: "unknown" });
       if (session.status === "done" || session.status === "error") {
         const payload = { ...session };
@@ -209,6 +221,7 @@ export async function GET(request, { params }) {
         else if (provider === "windsurf") clearWindsurfSession(state);
         else if (provider === "zed") clearZedSession(state);
         else if (provider === "xai") clearXaiSession(state);
+        else if (provider === "gapgpt") clearGapgptSession(state);
         else clearCodexSession(state);
         return NextResponse.json(payload);
       }
@@ -220,9 +233,10 @@ export async function GET(request, { params }) {
       else if (provider === "windsurf") stopWindsurfProxy();
       else if (provider === "zed") stopZedProxy();
       else if (provider === "xai") stopXaiProxy();
+      else if (provider === "gapgpt") stopGapgptProxy();
       else if (provider === "codex") stopCodexProxy();
       else if (provider === "xiaomi-mimo") stopXiaomiMimoProxy();
-      else return NextResponse.json({ error: "Proxy only supported for codex/xai/trae/windsurf/zed/xiaomi-mimo" }, { status: 400 });
+      else return NextResponse.json({ error: "Proxy only supported for codex/xai/trae/windsurf/zed/xiaomi-mimo/gapgpt" }, { status: 400 });
       return NextResponse.json({ success: true });
     }
 
@@ -467,6 +481,14 @@ export async function POST(request, { params }) {
         ...(meta || {}),
         ...(systemId ? { systemId } : {}),
       });
+
+      // Never persist a tokenless "active" connection — surface the failure instead.
+      if (!tokenData?.accessToken) {
+        return NextResponse.json(
+          { error: "Token exchange returned no access token" },
+          { status: 502 }
+        );
+      }
 
       // Save to database
       const connection = await createProviderConnection({

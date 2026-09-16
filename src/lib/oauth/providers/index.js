@@ -14,6 +14,7 @@ import iflow from "./iflow.js";
 import qoder from "./qoder.js";
 import qoderCn from "./qoder-cn.js";
 import github from "./github.js";
+import gapgpt from "./gapgpt.js";
 import kiro from "./kiro.js";
 import cursor from "./cursor.js";
 import kimi from "./kimi.js";
@@ -40,6 +41,7 @@ const PROVIDERS = {
   qoder,
   "qoder-cn": qoderCn,
   github,
+  gapgpt,
   kiro,
   cursor,
   kimi,
