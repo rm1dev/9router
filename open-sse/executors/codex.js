@@ -7,7 +7,7 @@ import {
 } from "../services/oauthCredentialManager.js";
 import { normalizeResponsesInput } from "../translator/formats/responsesApi.js";
 import { fetchImageAsBase64 } from "../translator/concerns/image.js";
-import { getModelUpstreamId, getProviderModels } from "../config/providerModels.js";
+import { getModelUpstreamId, getProviderModels, OAUTH_ALIASES } from "../config/providerModels.js";
 import { getThinkingLevels } from "../providers/thinkingLevels.js";
 import { DEFAULT_RETRY_CONFIG, HTTP_STATUS, resolveRetryEntry } from "../config/runtimeConfig.js";
 import { dbg } from "../utils/debugLog.js";
@@ -132,13 +132,13 @@ function normalizeCodexTools(body) {
 }
 
 // Resolve prompt-cache session id: client session → assistant-text-hash → workspaceId → connection
-function resolveCacheSessionId(body, credentials) {
+function resolveCacheSessionId(body, credentials, scope = "codex") {
   return resolveSessionId({
     headers: credentials?.rawHeaders,
     body,
     connectionId: credentials?.connectionId,
     workspaceId: credentials?.providerSpecificData?.workspaceId,
-    scope: "codex"
+    scope
   });
 }
 
@@ -205,11 +205,16 @@ function codexSseErrorResponse(status, message) {
 
 /**
  * Codex Executor - handles OpenAI Codex API (Responses API format)
- * Automatically injects default instructions if missing
+ * Automatically injects default instructions if missing.
+ *
+ * Parameterized by provider id so Codex CLI forks that speak the same
+ * Responses API (e.g. GapGPT/GapCode on api.gapgpt.app/v1/responses) can
+ * reuse this executor verbatim — only the registry entry differs.
  */
 export class CodexExecutor extends BaseExecutor {
-  constructor() {
-    super("codex", PROVIDERS.codex);
+  constructor(providerId = "codex") {
+    super(providerId, PROVIDERS[providerId]);
+    this._alias = OAUTH_ALIASES[providerId] || providerId;
     this._currentSessionId = null;
   }
 
@@ -219,7 +224,7 @@ export class CodexExecutor extends BaseExecutor {
    */
   buildHeaders(credentials, stream = true, _url = null, model = null, body = null) {
     const headers = super.buildHeaders(credentials, stream);
-    if (isCodexResponsesLiteModel(model && getModelUpstreamId("cx", model)) && !body?.tools?.some?.(tool => tool?.type === "web_search")) {
+    if (isCodexResponsesLiteModel(model && getModelUpstreamId(this._alias, model)) && !body?.tools?.some?.(tool => tool?.type === "web_search")) {
       headers["x-openai-internal-codex-responses-lite"] = "true";
     }
     headers["session_id"] = this._currentSessionId || credentials?.connectionId || "default";
@@ -247,11 +252,11 @@ export class CodexExecutor extends BaseExecutor {
 
   async refreshCredentials(credentials, log) {
     if (!credentials?.refreshToken) return null;
-    return refreshProviderCredentials("codex", credentials, log);
+    return refreshProviderCredentials(this.provider, credentials, log);
   }
 
   needsRefresh(credentials) {
-    return shouldRefreshCredentials("codex", credentials);
+    return shouldRefreshCredentials(this.provider, credentials);
   }
 
   /**
@@ -415,11 +420,11 @@ export class CodexExecutor extends BaseExecutor {
     this._isCompact = !!body._compact;
     delete body._compact;
     // Resolve conversation-stable session_id (priority: body → assistant-text → workspace → machine)
-    this._currentSessionId = resolveCacheSessionId(body, credentials);
+    this._currentSessionId = resolveCacheSessionId(body, credentials, this.provider);
     // Convert string input to array format (Codex API requires input as array)
     const normalized = normalizeResponsesInput(body.input);
     if (normalized) body.input = normalized;
-    const upstreamModel = getModelUpstreamId("cx", body.model || model);
+    const upstreamModel = getModelUpstreamId(this._alias, body.model || model);
     // Register hosted search before choosing transport; Lite cannot execute it.
     const autoWebSearch = body._autoCodexWebSearch === true;
     delete body._autoCodexWebSearch;
