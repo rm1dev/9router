@@ -45,61 +45,84 @@ function initKiroState(modelId) {
     inThink: false,                // Whether inside a <thinking> block
     thinkBuf: "",                  // Buffer for partial thinking content
     initialSent: false,            // Whether initial-response frame was emitted
+    reasoningSignature: `sig_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
   };
 }
 
 /**
  * Extract thinking blocks from text content.
  * Handles both <thinking>...</thinking> and <think>...</think> tags,
- * including partial tags split across SSE chunks.
+ * streaming thinking chunks incrementally to prevent idle timeouts.
  */
 function extractThinking(text, state) {
   if (!text) return { thinking: null, text: null };
 
   let working = text;
 
-  // Prepend buffered partial thinking from previous chunk
-  if (state.inThink && state.thinkBuf) {
+  // Prepend buffered partial tags/tokens from previous chunk
+  if (state.thinkBuf) {
     working = state.thinkBuf + working;
     state.thinkBuf = "";
-    state.inThink = false;
   }
 
-  // Match <thinking> or <think> opening tags
+  // If already inside thinking block:
+  if (state.inThink) {
+    const closeRe = /<\/thinking>|<\/think>/i;
+    const closeMatch = working.match(closeRe);
+
+    if (closeMatch) {
+      const closeIdx = closeMatch.index;
+      const closeLen = closeMatch[0].length;
+      const thinking = working.slice(0, closeIdx);
+      const after = working.slice(closeIdx + closeLen);
+      state.inThink = false;
+
+      // Recursively check remainder for subsequent thinking blocks
+      const recurse = after ? extractThinking(after, state) : { thinking: null, text: null };
+      return {
+        thinking: [thinking, recurse.thinking].filter(Boolean).join("") || null,
+        text: recurse.text || null
+      };
+    } else {
+      // Still inside thinking block.
+      // Protect against partial closing tag (e.g. "</think" or "</th") split across chunks
+      const possibleCloseStart = working.search(/<(?:\/(?:t(?:h(?:i(?:n(?:k(?:i(?:n(?:g)?)?)?)?)?)?)?)?)?$/i);
+      if (possibleCloseStart !== -1 && working.length - possibleCloseStart <= 11) {
+        state.thinkBuf = working.slice(possibleCloseStart);
+        const thinking = working.slice(0, possibleCloseStart);
+        return { thinking: thinking || null, text: null };
+      }
+
+      return { thinking: working || null, text: null };
+    }
+  }
+
+  // Not inside thinking block: check for opening tag
   const startRe = /<thinking>|<think>/i;
   const startMatch = working.match(startRe);
 
   if (!startMatch) {
+    // Protect against partial opening tag (e.g. "<think" or "<th") split across chunks
+    const possibleStart = working.search(/<(?:\/?(?:t(?:h(?:i(?:n(?:k(?:i(?:n(?:g)?)?)?)?)?)?)?)?)?$/i);
+    if (possibleStart !== -1 && working.length - possibleStart <= 10) {
+      state.thinkBuf = working.slice(possibleStart);
+      const textPart = working.slice(0, possibleStart);
+      return { thinking: null, text: textPart || null };
+    }
     return { thinking: null, text: working };
   }
 
-  const tag = startMatch[0].toLowerCase();
-  const closeTag = tag === "<think>" ? "</think>" : "</thinking>";
   const startIdx = startMatch.index;
-  const endIdx = working.indexOf(closeTag, startIdx + tag.length);
+  const startLen = startMatch[0].length;
+  const before = working.slice(0, startIdx);
+  const remainder = working.slice(startIdx + startLen);
 
-  if (endIdx === -1) {
-    // Opening tag without closing — buffer for next chunk
-    state.inThink = true;
-    state.thinkBuf = working.slice(startIdx);
-    const before = working.slice(0, startIdx).trim();
-    return { thinking: null, text: before || null };
-  }
-
-  // Complete block found
-  const thinking = working.slice(startIdx + tag.length, endIdx);
-  const before = working.slice(0, startIdx).trim();
-  const after = working.slice(endIdx + closeTag.length).trim();
-  const rest = [before, after].filter(Boolean).join("");
-
-  // Recursively process for more blocks
-  const recurse = rest
-    ? extractThinking(rest, { inThink: false, thinkBuf: "" })
-    : { thinking: null, text: null };
+  state.inThink = true;
+  const inside = extractThinking(remainder, state);
 
   return {
-    thinking: thinking || null,
-    text: recurse.text || null
+    thinking: inside.thinking || null,
+    text: [before, inside.text].filter(Boolean).join("") || null
   };
 }
 
@@ -355,6 +378,21 @@ function extractTools(body) {
 // ─── OpenAI SSE → EventStream binary conversion ───────────────────────────────
 
 /**
+ * Build a reasoningContentEvent frame for Kiro IDE.
+ * Kiro IDE's Smithy schema defines ReasoningContentEvent as { text, signature, redactedContent }.
+ * Passing text and a stable signature ensures Kiro renders and seals the thinking block.
+ */
+function buildReasoningFrame(text, state) {
+  return buildEventStreamFrame("reasoningContentEvent", {
+    text: text,
+    signature: state.reasoningSignature || `sig_${state.modelId || "thinking"}`,
+    // Retain content + modelId for generic consumers
+    content: text,
+    modelId: state.modelId || "unknown"
+  });
+}
+
+/**
  * Convert an OpenAI SSE chunk to AWS EventStream binary frame(s)
  * This replaces pipeOpenAIasEventStream and works with pipeTransformedEventStream
  *
@@ -366,17 +404,19 @@ function convertOpenAIToKiro(chunk, state) {
   // Flush: ensure clean stream termination
   if (!chunk) {
     if (state.finishSent) return null;
+    const flushFrames = [];
     // Flush any remaining buffered thinking
     if (state.inThink && state.thinkBuf) {
       state.inThink = false;
       const thinking = state.thinkBuf;
       state.thinkBuf = "";
-      return withInitialFrame(state, buildEventStreamFrame("reasoningContentEvent", {
-        content: thinking,
-        modelId: state.modelId || "kiro-unknown"
-      }));
+      flushFrames.push(buildReasoningFrame(thinking, state));
     }
-    return withInitialFrame(state, buildEventStreamFrame("messageStopEvent", {}));
+    const finishFrames = emitFinish(state);
+    if (finishFrames) {
+      flushFrames.push(...(Array.isArray(finishFrames) ? finishFrames : [finishFrames]));
+    }
+    return withInitialFrame(state, flushFrames.length > 0 ? flushFrames : null);
   }
 
   const frames = [];
@@ -425,10 +465,7 @@ function convertOpenAIToKiro(chunk, state) {
 
   // Handle explicit reasoning_content (type-specific thinking channel)
   if (delta.reasoning_content) {
-    frames.push(buildEventStreamFrame("reasoningContentEvent", {
-      content: delta.reasoning_content,
-      modelId
-    }));
+    frames.push(buildReasoningFrame(delta.reasoning_content, state));
   }
 
   // Handle text content — extract thinking blocks, emit rest as assistantResponseEvent
@@ -436,10 +473,7 @@ function convertOpenAIToKiro(chunk, state) {
     const { thinking, text } = extractThinking(delta.content, state);
 
     if (thinking) {
-      frames.push(buildEventStreamFrame("reasoningContentEvent", {
-        content: thinking,
-        modelId
-      }));
+      frames.push(buildReasoningFrame(thinking, state));
     }
 
     if (text) {
@@ -468,9 +502,13 @@ function convertOpenAIToKiro(chunk, state) {
 
 /**
  * Emit termination frames. For tool-call responses, emits stop:true per tool.
- * For text-only responses, emits messageStopEvent.
+ * Emits metadataEvent with stopReason and tokenUsage to prevent Kiro IDE
+ * from detecting false truncation and retrying the request (which duplicated chat responses).
  */
 function emitFinish(state) {
+  if (state.finishSent) return null;
+  state.finishSent = true;
+
   const frames = [];
 
   if (state.hasToolCalls) {
@@ -483,17 +521,37 @@ function emitFinish(state) {
         toolUseId: tc.id
       }));
     }
-  } else {
-    // Text-only response: emit messageStopEvent
+  }
+
+  const promptTokens = state.usage?.prompt_tokens || 0;
+  const completionTokens = state.usage?.completion_tokens || 0;
+  const totalTokens = promptTokens + completionTokens;
+  const stopReason = state.hasToolCalls ? "tool_use" : "end_turn";
+
+  // Kiro Runtime requires metadataEvent with stopReason and tokenUsage.
+  // Without stopReason in metadataEvent, Kiro IDE suspects truncation
+  // (q.converse.truncation_suspected) and automatically retries the turn,
+  // causing duplicate responses with slightly different wording to appear!
+  frames.push(buildEventStreamFrame("metadataEvent", {
+    stopReason,
+    tokenUsage: {
+      uncachedInputTokens: promptTokens,
+      outputTokens: completionTokens,
+      totalTokens,
+      cacheReadInputTokens: 0,
+      cacheWriteInputTokens: 0,
+      contextUsagePercentage: 0
+    }
+  }));
+
+  // Also emit legacy messageStopEvent and usageEvent for backward compatibility
+  if (!state.hasToolCalls) {
     frames.push(buildEventStreamFrame("messageStopEvent", {}));
   }
-  state.finishSent = true;
-
-  // Emit usage if available
   if (state.usage) {
     frames.push(buildEventStreamFrame("usageEvent", {
-      inputTokens: state.usage.prompt_tokens || 0,
-      outputTokens: state.usage.completion_tokens || 0
+      inputTokens: promptTokens,
+      outputTokens: completionTokens
     }));
   }
 
@@ -577,4 +635,12 @@ function isBinaryEventStream(buffer) {
   return totalLen > 12 && totalLen < 1000000 && headersLen < totalLen - 12;
 }
 
-module.exports = { intercept };
+module.exports = {
+  intercept,
+  convertOpenAIToKiro,
+  initKiroState,
+  buildEventStreamFrame,
+  buildReasoningFrame,
+  extractThinking,
+  emitFinish,
+};
