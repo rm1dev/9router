@@ -170,6 +170,24 @@ export function kiroToOpenAIResponse(chunk, state) {
     return openaiChunk;
   }
 
+  // Handle Kiro Runtime metadataEvent (holds stopReason and tokenUsage)
+  if (eventType === "metadataEvent" || eventType === "MetadataEvent" || data.metadataEvent) {
+    const meta = data.metadataEvent || data;
+    if (meta.tokenUsage) {
+      const usage = toOpenAIUsage(meta.tokenUsage, "kiro");
+      if (usage) state.usage = usage;
+    }
+    const reason = meta.stopReason || meta.stop_reason;
+    if (reason) {
+      const finishReason = toOpenAIFinish(reason, "kiro");
+      state.finishReason = finishReason;
+      const openaiChunk = buildChunk(chunkMeta(state), {}, finishReason);
+      if (state.usage) openaiChunk.usage = state.usage;
+      return openaiChunk;
+    }
+    return null;
+  }
+
 // Handle usage events
   if (eventType === "usageEvent" || data.usageEvent) {
     const usage = toOpenAIUsage(data.usageEvent || data, "kiro");
