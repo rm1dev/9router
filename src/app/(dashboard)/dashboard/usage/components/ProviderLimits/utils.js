@@ -959,6 +959,8 @@ export function calculateProviderGroupSummary(
       ? new Date(Math.min(...upcomingResets)).toISOString()
       : null;
 
+    const firstQuota = b.quotas[0] || null;
+
     return {
       bucketKey: b.bucketKey,
       name: b.name,
@@ -973,8 +975,26 @@ export function calculateProviderGroupSummary(
       isCreditBalance: b.isCreditBalance,
       currency: b.currency,
       recurring: b.recurring,
+      used: firstQuota ? firstQuota.used : undefined,
+      total: firstQuota ? firstQuota.total : undefined,
     };
   });
+
+  const allUniqueRawQuotas = [];
+  const seenRawKeys = new Set();
+  for (const conn of connections) {
+    const raw = quotaData[conn.id]?.quotas;
+    if (Array.isArray(raw)) {
+      for (const q of raw) {
+        const key = getQuotaVisibilityKey(q);
+        if (key && !seenRawKeys.has(key)) {
+          seenRawKeys.add(key);
+          allUniqueRawQuotas.push(q);
+        }
+      }
+    }
+  }
+  const hiddenRows = getHiddenQuotaRows(provider, allUniqueRawQuotas, quotaVisibility);
 
   return {
     provider,
@@ -984,6 +1004,7 @@ export function calculateProviderGroupSummary(
     failedAccounts,
     errorCount: failedAccounts.length,
     buckets,
+    hiddenRows,
     isFullyLoaded: loadingCount === 0 && totalAccounts > 0,
     hasAnyQuota: buckets.length > 0,
   };

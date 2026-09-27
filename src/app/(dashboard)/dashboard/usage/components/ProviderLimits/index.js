@@ -218,13 +218,6 @@ export default function ProviderLimits() {
   const countdownRef = useRef(null);
   const tickCountRef = useRef(0);
 
-  // Auto-expand provider when filtering specifically to it
-  useEffect(() => {
-    if (providerFilter !== "all") {
-      setExpandedProvider(providerFilter);
-    }
-  }, [providerFilter]);
-
   const fetchConnections = useCallback(
     async (targetPage = page) => {
       try {
@@ -1149,6 +1142,7 @@ export default function ProviderLimits() {
             onRefreshGroup={refreshGroup}
             onToggleAccountActive={handleToggleConnectionActive}
             onEditConnection={(conn) => {
+              setExpandedProvider(null);
               setSelectedConnection(conn);
               setShowEditModal(true);
             }}
@@ -1161,10 +1155,17 @@ export default function ProviderLimits() {
             autoPingMaps={autoPingMaps}
             toggleAutoPing={toggleAutoPing}
             onResetCodexLimit={(conn, count) => {
+              setExpandedProvider(null);
               setResetConfirmState({ connection: conn, resetCreditCount: count });
             }}
-            onViewCodexResetCredits={handleViewCodexResetCredits}
-            onViewClaudeResets={handleViewClaudeResets}
+            onViewCodexResetCredits={(conn) => {
+              setExpandedProvider(null);
+              handleViewCodexResetCredits(conn);
+            }}
+            onViewClaudeResets={(conn, reset) => {
+              setExpandedProvider(null);
+              handleViewClaudeResets(conn, reset);
+            }}
             quotaSortMode={quotaSortMode}
           />
         ))}
@@ -1175,7 +1176,7 @@ export default function ProviderLimits() {
           Showing {sortedConnections.length} account{sortedConnections.length === 1 ? "" : "s"} across {providerGroups.length} provider{providerGroups.length === 1 ? "" : "s"}
         </span>
         <span className="text-[11px] text-text-muted/80">
-          Click any provider card to expand individual accounts
+          Click a provider card to view its accounts
         </span>
       </div>
 

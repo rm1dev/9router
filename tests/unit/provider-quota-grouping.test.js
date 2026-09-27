@@ -148,6 +148,8 @@ describe("provider quota grouping and summary calculations", () => {
     const summary = calculateProviderGroupSummary("gapgpt", [conn1], quotaData, {}, {}, visibility);
     expect(summary.buckets).toHaveLength(1);
     expect(summary.buckets[0].name).toBe("5h");
+    expect(summary.hiddenRows).toHaveLength(1);
+    expect(summary.hiddenRows[0].name).toBe("Weekly");
   });
 
   it("reports loading progress and partial coverage when accounts are loading", () => {
@@ -210,3 +212,17 @@ describe("provider quota availability", () => {
     expect(bucket.nextUsableResetAt).toBeNull();
   });
 });
+
+  it("provides single-account used and total values directly on bucket for non-aggregated display", () => {
+    const connections = [{ id: "codex-1", provider: "codex", name: "rmonedev@gmail.com" }];
+    const data = {
+      "codex-1": {
+        quotas: [{ name: "5h", used: 27, total: 100, remainingPercentage: 73, resetAt: "2099-01-01T00:00:00Z" }],
+      },
+    };
+    const summary = calculateProviderGroupSummary("codex", connections, data);
+    expect(summary.totalAccounts).toBe(1);
+    expect(summary.buckets[0].used).toBe(27);
+    expect(summary.buckets[0].total).toBe(100);
+    expect(summary.buckets[0].availablePercent).toBe(73);
+  });
