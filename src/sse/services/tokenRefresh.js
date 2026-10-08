@@ -12,6 +12,7 @@ import {
   refreshClaudeOAuthToken as _refreshClaudeOAuthToken,
   refreshGoogleToken as _refreshGoogleToken,
   refreshCodexToken as _refreshCodexToken,
+  refreshGapgptToken as _refreshGapgptToken,
   refreshIflowToken as _refreshIflowToken,
   refreshGitHubToken as _refreshGitHubToken,
   refreshCopilotToken as _refreshCopilotToken,
@@ -42,6 +43,9 @@ export const refreshGoogleToken = (refreshToken, clientId, clientSecret) =>
 
 export const refreshCodexToken = (refreshToken) =>
   _refreshCodexToken(refreshToken, log);
+
+export const refreshGapgptToken = (refreshToken) =>
+  _refreshGapgptToken(refreshToken, log);
 
 export const refreshIflowToken = (refreshToken) =>
   _refreshIflowToken(refreshToken, log);

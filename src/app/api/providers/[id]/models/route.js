@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getProviderConnectionById } from "@/models";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
 import { GEMINI_CONFIG, ZED_HOSTED_CONFIG } from "@/lib/oauth/constants/oauth";
-import { refreshGoogleToken, refreshCodexToken, updateProviderCredentials } from "@/sse/services/tokenRefresh";
+import { refreshGoogleToken, refreshCodexToken, refreshGapgptToken, updateProviderCredentials } from "@/sse/services/tokenRefresh";
 import { resolveOllamaLocalHost } from "open-sse/config/providers.js";
 import { getModelsByProviderId } from "open-sse/config/providerModels.js";
 import { resolveKiroModels } from "open-sse/services/kiroModels.js";
@@ -208,6 +208,35 @@ const PROVIDER_MODELS_CONFIG = {
       }),
       parseFn: parseCodexModels,
       errorLabel: "Failed to fetch Codex models"
+    })
+  },
+  gapgpt: {
+    customResolver: buildOAuthResolver({
+      refreshFn: (conn) => refreshGapgptToken(conn.refreshToken),
+      fetchFn: (token) => fetch("https://api.gapgpt.app/v1/models", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "originator": "codex_cli_rs"
+        }
+      }),
+      parseFn: (data) => {
+        const models = parseOpenAIStyleModels(data);
+        // Filter out non-chat models: exclude image generators, compaction, embed models,
+        // and keep only models that support the openai endpoint (chat completions).
+        return models.filter((m) => {
+          const id = m.id || m.name || "";
+          if (id.startsWith("gpt-image-") || id.includes("-compaction") || 
+              id.includes("-openai-compact") || id.includes("-embed")) {
+            return false;
+          }
+          const endpoints = m.supported_endpoint_types || [];
+          return endpoints.includes("openai");
+        });
+      },
+      errorLabel: "Failed to fetch GapGPT models"
     })
   },
   antigravity: {
