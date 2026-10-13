@@ -113,7 +113,7 @@ describe("Kiro MITM Reasoning & Thinking Handling", () => {
     const metaEvent = finishFrames.find((f) => f.headers[":event-type"] === "metadataEvent");
 
     assert.ok(metaEvent, "metadataEvent must be present");
-    assert.equal(metaEvent.payload.stopReason, "end_turn");
+    assert.equal(metaEvent.payload.stopReason, "END_TURN");
     assert.equal(metaEvent.payload.tokenUsage.uncachedInputTokens, 150);
     assert.equal(metaEvent.payload.tokenUsage.outputTokens, 75);
     assert.equal(metaEvent.payload.tokenUsage.totalTokens, 225);
@@ -131,13 +131,14 @@ describe("Kiro MITM Reasoning & Thinking Handling", () => {
     assert.ok(toolEvent, "toolUseEvent must be present");
     assert.equal(toolEvent.payload.stop, true);
     assert.ok(metaEvent, "metadataEvent must be present");
-    assert.equal(metaEvent.payload.stopReason, "tool_use");
+    assert.equal(metaEvent.payload.stopReason, "TOOL_USE");
   });
 
   it("convertOpenAIToKiro flush (null chunk) terminates cleanly with metadataEvent", () => {
     const state = initKiroState("gemini-3.8-flash");
     state.inThink = true;
     state.thinkBuf = "Final unclosed thinking";
+    state.finishReason = "stop";
 
     const flushed = decodeFrames(convertOpenAIToKiro(null, state));
     const reasoningEvent = flushed.find((f) => f.headers[":event-type"] === "reasoningContentEvent");
@@ -146,6 +147,6 @@ describe("Kiro MITM Reasoning & Thinking Handling", () => {
     assert.ok(reasoningEvent, "Buffered thinking flushed as reasoningContentEvent");
     assert.equal(reasoningEvent.payload.text, "Final unclosed thinking");
     assert.ok(metaEvent, "Clean metadataEvent termination emitted on flush");
-    assert.equal(metaEvent.payload.stopReason, "end_turn");
+    assert.equal(metaEvent.payload.stopReason, "END_TURN");
   });
 });
