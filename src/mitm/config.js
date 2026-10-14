@@ -39,6 +39,7 @@ const URL_PATTERNS = {
  * (verified via live mitmproxy capture of Kiro IDE 1.0.228).
  */
 function isChatRequest(tool, req) {
+  if (tool === "kiro" && isKiroResponsesRequest(req)) return true;
   const patterns = URL_PATTERNS[tool] || [];
   if (patterns.some((p) => (req.url || "").includes(p))) return true;
   if (tool === "kiro") {
@@ -46,6 +47,14 @@ function isChatRequest(tool, req) {
     return target.includes("GenerateAssistantResponse");
   }
   return false;
+}
+
+// Kiro 1.2.56 can select CreateResponse for the main agent while continuing
+// to use GenerateAssistantResponse for auxiliary tasks. The new transport is
+// native OpenAI Responses JSON/SSE, not AWS EventStream.
+function isKiroResponsesRequest(req) {
+  const pathname = String(req.url || "").split("?")[0];
+  return req.method === "POST" && /^\/v1\/responses\/?$/.test(pathname);
 }
 
 // Synonym map: rawModel from request → canonical alias key in mitmAlias DB
@@ -189,4 +198,4 @@ function extractModel(url, body) {
   }
 }
 
-module.exports = { IS_DEV, LSOF_BIN, TARGET_HOSTS, URL_PATTERNS, MODEL_SYNONYMS, MODEL_PATTERNS, MODEL_NO_MAP, LOG_BLACKLIST_URL_PARTS, getToolForHost, isChatRequest, extractModel };
+module.exports = { IS_DEV, LSOF_BIN, TARGET_HOSTS, URL_PATTERNS, MODEL_SYNONYMS, MODEL_PATTERNS, MODEL_NO_MAP, LOG_BLACKLIST_URL_PARTS, getToolForHost, isChatRequest, isKiroResponsesRequest, extractModel };
