@@ -1,6 +1,6 @@
 const { err } = require("../logger");
-const { IS_DEV } = require("../config");
-const { fetchRouter, pipeTransformedEventStream } = require("./base");
+const { IS_DEV, isKiroResponsesRequest } = require("../config");
+const { fetchRouter, pipeSSE, pipeTransformedEventStream } = require("./base");
 const fs = require("fs");
 const path = require("path");
 
@@ -611,6 +611,14 @@ async function intercept(req, res, bodyBuffer, mappedModel) {
     }
     
     const body = JSON.parse(bodyBuffer.toString());
+
+    if (isKiroResponsesRequest(req)) {
+      const routerRes = await fetchRouter({ ...body, model: mappedModel }, "/v1/responses", req.headers);
+      // Kiro's CreateResponse reader expects Responses SSE events. Re-encoding
+      // them as AWS EventStream would make the main agent unable to read them.
+      await pipeSSE(routerRes, res);
+      return;
+    }
 
     // 1 + 2: CodeWhisperer → OpenAI messages + tools
     const messages = codeWhispererToMessages(body);
