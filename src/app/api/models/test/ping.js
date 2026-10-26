@@ -3,6 +3,7 @@ import { resolveProviderId } from "@/shared/constants/providers.js";
 import { unwrapClineEnvelope } from "open-sse/shared/clineEnvelope.js";
 import { UPDATER_CONFIG } from "@/shared/constants/config";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
+import { GAPGPT_IMAGE_GENERATION_TIMEOUT_MS, GAPGPT_IMAGE_DOWNLOAD_TIMEOUT_MS } from "open-sse/config/gapgptWebImages.js";
 
 const CLI_TOKEN_SALT = "9r-cli-auth";
 
@@ -87,7 +88,9 @@ export async function pingModelByKind(model, kind, baseUrl = `http://127.0.0.1:$
       method: "POST",
       headers,
       body: JSON.stringify({ model, prompt: "test" }),
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(resolveProviderId(String(model).split("/")[0]) === "gapgpt-web"
+        ? GAPGPT_IMAGE_GENERATION_TIMEOUT_MS + GAPGPT_IMAGE_DOWNLOAD_TIMEOUT_MS + 10000
+        : 15000),
     });
     const latencyMs = Date.now() - start;
     const rawText = await res.text().catch(() => "");
