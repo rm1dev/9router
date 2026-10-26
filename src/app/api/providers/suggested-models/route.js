@@ -12,6 +12,16 @@ export async function GET(request) {
     return NextResponse.json({ error: "Missing url or type" }, { status: 400 });
   }
 
+  if (type === "gapgpt-web") {
+    try {
+      const { fetchLiveGapGptWebModels } = await import("open-sse/services/gapgptWebModels.js");
+      const data = await fetchLiveGapGptWebModels();
+      return NextResponse.json({ data });
+    } catch {
+      return NextResponse.json({ data: [] });
+    }
+  }
+
   const filter = FILTERS[type];
   if (!filter) {
     return NextResponse.json({ error: "Unknown filter type" }, { status: 400 });
