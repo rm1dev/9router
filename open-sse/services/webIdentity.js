@@ -208,6 +208,38 @@ const PROBES = {
     return OK(email.includes("@") ? email : "");
   },
 
+  async "gapgpt-web"(credential) {
+    const raw = String(credential || "").trim();
+    if (!raw) return REJECTED("Missing cookie or token");
+    let cookieStr = raw;
+    if (!raw.includes("=")) {
+      cookieStr = `accessToken=${raw}`;
+    }
+    const jar = cookieJar(cookieStr);
+    const token = jar.get("accessToken");
+    if (!token) return REJECTED("Missing accessToken in cookie");
+
+    const res = await request("https://gapgpt.app/api/v1/profile", {
+      headers: {
+        Cookie: cookieStr,
+        "X-Auth-Cookie": "1",
+        ...(jar.get("csrftoken") ? { "X-CSRFToken": jar.get("csrftoken") } : {}),
+      },
+    });
+    if (!res.status) return UNKNOWN(res.error);
+    if (res.status === 401 || res.status === 403) {
+      if (!jar.get("__Host-gap_dk")) {
+        return REJECTED("Missing __Host-gap_dk cookie (copy full Cookie header from DevTools Network tab)");
+      }
+      return REJECTED("Session is invalid or expired");
+    }
+    if (!res.ok) return UNKNOWN(`GapGPT returned HTTP ${res.status}`);
+    let json = null;
+    try { json = JSON.parse(res.text); } catch { return UNKNOWN("GapGPT returned invalid JSON"); }
+    const phoneOrEmail = json?.phone_number || json?.email || json?.token || "";
+    return OK(phoneOrEmail);
+  },
+
 
 };
 

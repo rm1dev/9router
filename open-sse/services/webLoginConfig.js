@@ -60,6 +60,15 @@ export const WEB_LOGIN_CONFIGS = {
       }
     },
   },
+  "gapgpt-web": {
+    loginUrl: "https://gapgpt.app/",
+    cookieDomain: ".gapgpt.app",
+    tokenSources: [
+      { type: "cookie", name: "accessToken" },
+      { type: "cookie", name: "__Host-gap_dk", optional: true },
+      { type: "cookie", name: "csrftoken", optional: true },
+    ],
+  },
   "uc-web": {
     loginUrl: "https://uncensored.com/",
     cookieDomain: ".uncensored.com",

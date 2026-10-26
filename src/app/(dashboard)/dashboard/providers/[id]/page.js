@@ -528,7 +528,7 @@ export default function ProviderDetailPage() {
 
   // Fetch suggested models from provider's public API (if configured)
   useEffect(() => {
-    const fetcher = (OAUTH_PROVIDERS[providerId] || APIKEY_PROVIDERS[providerId] || FREE_PROVIDERS[providerId] || FREE_TIER_PROVIDERS[providerId])?.modelsFetcher;
+    const fetcher = AI_PROVIDERS[providerId]?.modelsFetcher;
     if (!fetcher) return;
     fetchSuggestedModels(fetcher).then(setSuggestedModels);
   }, [providerId]);
@@ -727,18 +727,33 @@ export default function ProviderDetailPage() {
         const modelId = model.id || model.name;
         if (!modelId) continue;
         const alreadyExists = customModels.some(
-          (entry) => entry.providerAlias === providerStorageAlias && entry.id === modelId && (entry.kind || entry.type || "llm") === "llm"
+          (entry) => entry.providerAlias === providerStorageAlias && entry.id === modelId && (entry.kind || entry.type || "llm") === (model.kind || "llm")
         ) || Object.values(modelAliases).includes(`${providerStorageAlias}/${modelId}`);
         if (alreadyExists) {
           continue;
         }
-        await handleAddCustomModel(modelId, "llm", providerStorageAlias);
+        await handleAddCustomModel(modelId, model.kind || "llm", providerStorageAlias);
         importedCount += 1;
       }
-      if (importedCount === 0) {
-        alert(translate("All models already exist, no new models added"));
+
+      let removedCount = 0;
+      if (providerId === "gapgpt-web") {
+        const upstreamIds = new Set(models.map((m) => m.id || m.name));
+        for (const entry of customModels) {
+          if (entry.providerAlias === providerStorageAlias && !upstreamIds.has(entry.id)) {
+            await handleDeleteCustomModel(entry.id, entry.kind || entry.type || "llm", providerStorageAlias);
+            removedCount += 1;
+          }
+        }
+      }
+
+      if (importedCount === 0 && removedCount === 0) {
+        alert(translate("All models are already up to date"));
       } else {
-        alert(translate("Successfully added") + ` ${importedCount} ` + translate("models"));
+        const parts = [];
+        if (importedCount > 0) parts.push(`${translate("Successfully added")} ${importedCount} ${translate("models")}`);
+        if (removedCount > 0) parts.push(`${translate("Removed")} ${removedCount} ${translate("obsolete models")}`);
+        alert(parts.join(", "));
       }
     } catch (error) {
       console.log("Error importing GapGPT models:", error);
@@ -1338,8 +1353,8 @@ export default function ProviderDetailPage() {
           </button>
         )}
 
-        {/* Import GapGPT models button — only show for gapgpt provider */}
-        {(providerId === "gapgpt") && connections.some((conn) => conn.isActive !== false) && (
+        {/* Import GapGPT models button — show for gapgpt and gapgpt-web */}
+        {(providerId === "gapgpt" || providerId === "gapgpt-web") && connections.some((conn) => conn.isActive !== false) && (
           <button
             onClick={handleImportGapgptModels}
             disabled={importingGapgptModels}

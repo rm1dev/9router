@@ -250,6 +250,8 @@ function buildCliPackage() {
   // the bundle's node_modules or every importer throws MODULE_NOT_FOUND at runtime. Output
   // tracing normally copies it; this is the same belt-and-braces guard used for sql.js.
   ensureModuleInBundle("open");
+  // ws stays external to preserve its masking implementation in production.
+  ensureModuleInBundle("ws");
   const betterDir = path.join(cliAppDir, "node_modules", "better-sqlite3");
   if (fs.existsSync(betterDir)) {
     fs.rmSync(betterDir, { recursive: true, force: true });

@@ -13,6 +13,7 @@ const ICON_ALIASES = {
   "opencode-zen": "opencode",
   // Web-cookie variants ride their brand's existing mark
   "deepseek-web": "deepseek",
+  "gapgpt-web": "gapgpt",
   "muse-web": "muse",
   "gemini-web": "gemini",
   "chatgpt-web": "openai",

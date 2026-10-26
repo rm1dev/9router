@@ -13,6 +13,7 @@ export const WEB_LOGIN_PROVIDERS = new Set([
   "gemini-web",
   "muse-web",
   "deepseek-web",
+  "gapgpt-web",
   "uc-web",
 ]);
 

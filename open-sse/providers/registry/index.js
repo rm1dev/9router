@@ -141,6 +141,7 @@ import p136 from "./bedrock.js";
 import p137 from "./bedrock-xai.js";
 import p138 from "./nous.js";
 import p140 from "./deepseek-web.js";
+import p141 from "./gapgpt-web.js";
 import p143 from "./gemini-web.js";
 import p144 from "./muse-web.js";
 import p146 from "./chatgpt-web.js";
@@ -289,6 +290,7 @@ export default [
   p137,
   p138,
   p140,
+  p141,
   p143,
   p144,
   p146,

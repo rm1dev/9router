@@ -249,6 +249,13 @@ const PROVIDER_MODELS_CONFIG = {
       errorLabel: "Failed to fetch GapGPT models"
     })
   },
+  "gapgpt-web": {
+    customResolver: async () => {
+      const { fetchLiveGapGptWebModels } = await import("open-sse/services/gapgptWebModels.js");
+      const models = await fetchLiveGapGptWebModels();
+      return { models };
+    },
+  },
   antigravity: {
     url: "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:models",
     method: "POST",
