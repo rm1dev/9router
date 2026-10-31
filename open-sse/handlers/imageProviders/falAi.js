@@ -5,6 +5,7 @@ import { PROVIDER_MEDIA } from "../../providers/index.js";
 const BASE_URL = PROVIDER_MEDIA["fal-ai"]?.imageConfig?.baseUrl;
 
 export default {
+  supportsReferenceImages: true,
   async: true,
   buildUrl: (model) => `${BASE_URL}/${model}`,
   buildHeaders: (creds) => {
@@ -14,6 +15,7 @@ export default {
   buildBody: (_model, body) => {
     const req = { prompt: body.prompt, num_images: body.n || 1 };
     if (body.size) req.image_size = sizeToAspectRatio(body.size);
+    if (body.images?.length) throw new Error("This Fal adapter accepts one reference image per request");
     if (body.image) req.image_url = body.image;
     return req;
   },

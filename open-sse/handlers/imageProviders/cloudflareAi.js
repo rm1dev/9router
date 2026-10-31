@@ -138,6 +138,7 @@ function normalizeCloudflareResponse(responseBody) {
 }
 
 export default {
+  supportsReferenceImages: true,
   buildUrl: (model, creds) => {
     const accountId = creds?.providerSpecificData?.accountId;
     if (!accountId) throw new Error("cloudflare-ai requires accountId in providerSpecificData");
@@ -155,11 +156,11 @@ export default {
     return headers;
   },
 
-  buildBody: async (model, body) => (
-    MULTIPART_MODELS.has(model)
-      ? buildMultipartBody(body)
-      : await buildJsonBody(body)
-  ),
+  buildBody: async (model, body) => {
+    if (body.images?.length) throw new Error("This Cloudflare adapter accepts one reference image");
+    if (body.image && MULTIPART_MODELS.has(model)) throw new Error("Reference upload for this Cloudflare model is not implemented");
+    return MULTIPART_MODELS.has(model) ? buildMultipartBody(body) : await buildJsonBody(body);
+  },
 
   async parseResponse(response) {
     const contentType = (response.headers.get("Content-Type") || "").toLowerCase();

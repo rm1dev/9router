@@ -181,7 +181,7 @@ export class ChatGptWebExecutor extends BaseExecutor {
    *
    * @returns {Promise<Array<{ b64: string, mime: string }>>}
    */
-  async generateMedia({ prompt, n = 1, size, credentials, signal, log }) {
+  async generateMedia({ prompt, n = 1, size, images = [], credentials, signal, log }) {
     if (!prompt) throw new Error("prompt is required for image generation");
     const storageState = readStorageState(credentials);
     const providerData = credentials.providerSpecificData;
@@ -192,12 +192,12 @@ export class ChatGptWebExecutor extends BaseExecutor {
 
     const results = [];
     for (let i = 0; i < Math.max(1, n); i++) {
-      results.push(await this.#generateOneImage({ prompt, size, storageState, userAgent, signal, log, credentials }));
+      results.push(await this.#generateOneImage({ prompt, size, images, storageState, userAgent, signal, log, credentials }));
     }
     return results;
   }
 
-  async #generateOneImage({ prompt, size, storageState, userAgent, signal, log, credentials }) {
+  async #generateOneImage({ prompt, size, images, storageState, userAgent, signal, log, credentials }) {
     try {
       const accessToken = await fetchAccessToken({ storageState, userAgent, signal });
       return await generateChatGptWebImageHttp({
@@ -207,6 +207,7 @@ export class ChatGptWebExecutor extends BaseExecutor {
         userAgent,
         prompt,
         sizeHint: size,
+        images,
         signal,
         log,
       });
@@ -214,6 +215,7 @@ export class ChatGptWebExecutor extends BaseExecutor {
       // Turnstile enforcement is the only case the browser path still wins;
       // everything else should surface its real error.
       if (error?.code !== "TURNSTILE_REQUIRED" && !/Turnstile/i.test(error?.message || "")) throw error;
+      if (images.length) throw new Error("ChatGPT requires Turnstile; browser fallback with reference images is not implemented");
       log?.warn?.("CGPT-WEB", "Sentinel demanded Turnstile — falling back to the browser path");
     }
 

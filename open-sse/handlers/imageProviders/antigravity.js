@@ -1,6 +1,7 @@
 // Antigravity image adapter - delegates to the executor for correct request
 // envelope (project, model, requestType, sessionId) and auth headers.
-import { nowSec, sizeToAspectRatio } from "./_base.js";
+import { nowSec, sizeToAspectRatio, readReferenceImage } from "./_base.js";
+import { fetchPublic } from "../../../src/shared/utils/ssrfGuard.js";
 import { getExecutor } from "../../executors/index.js";
 
 // Antigravity accepts up to 10 reference images per request
@@ -32,12 +33,13 @@ function collectImageInputs(body) {
     body.reference_image,
     body.image,
   ];
-  return candidates
-    .flatMap(v => (Array.isArray(v) ? v : v ? [v] : []))
-    .slice(0, MAX_REFERENCE_IMAGES);
+  const images = candidates.flatMap(v => (Array.isArray(v) ? v : v ? [v] : []));
+  if (images.length > MAX_REFERENCE_IMAGES) throw Object.assign(new Error("Antigravity accepts at most 10 reference images"), { status: 400 });
+  return images;
 }
 
 export default {
+  supportsReferenceImages: true,
   // Delegate to executor instead of building URL/headers/body manually
   useExecutor: true,
 
@@ -75,9 +77,14 @@ export default {
 
     // Build parts: reference images first, then the text prompt
     const parts = [];
-    for (const imageInput of collectImageInputs(body)) {
+    for (let imageInput of collectImageInputs(body)) {
+      if (typeof imageInput === "string" && /^https?:\/\//i.test(imageInput)) {
+        const blob = await readReferenceImage(await fetchPublic(imageInput, { signal: AbortSignal.timeout(30000) }));
+        imageInput = `data:${blob.type};base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`;
+      }
       const inlineData = resolveImageInput(imageInput);
-      if (inlineData) parts.push(inlineData);
+      if (!inlineData) throw Object.assign(new Error("Antigravity reference images must be base64 or image data URLs"), { status: 400 });
+      parts.push(inlineData);
     }
     parts.push({ text: prompt });
 

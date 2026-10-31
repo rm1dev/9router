@@ -43,6 +43,7 @@ async function sourceImage(body) {
 }
 
 export default {
+  supportsReferenceImages: true,
   buildUrl: (model, creds) => {
     const override = customBaseUrl(creds);
     if (override) {
@@ -73,6 +74,8 @@ export default {
   buildBody: async (model, body) => {
     const entry = lookup(model);
     const task = mappingTask(entry || "");
+    if (body.images?.length) throw new Error("HuggingFace image-to-image accepts one reference image");
+    if (body.image && task !== "image-to-image") throw new Error(`HuggingFace model '${model}' is not configured for image-to-image`);
 
     if (task === "image-to-image") {
       const image = await sourceImage(body);

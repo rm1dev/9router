@@ -47,9 +47,24 @@ function recordImageRequestUsage({ provider, model, connectionId, apiKey, endpoi
 export async function handleImageGeneration(request) {
   let body;
   try {
-    body = await request.json();
-  } catch {
-    return errorResponse(HTTP_STATUS.BAD_REQUEST, "Invalid JSON body");
+    if ((request.headers.get("content-type") || "").includes("multipart/form-data")) {
+      const form = await request.formData();
+      body = {};
+      const images = [];
+      for (const [key, value] of form.entries()) {
+        if (["image", "image[]", "images", "reference_image", "reference_images"].includes(key)) {
+          if (typeof value === "string") images.push(value);
+          else {
+            if (!value.type.startsWith("image/") || !value.size || value.size > 20 * 1024 * 1024) throw new Error("Invalid reference image type or size");
+            images.push(`data:${value.type};base64,${Buffer.from(await value.arrayBuffer()).toString("base64")}`);
+          }
+        } else if (typeof value === "string") body[key] = value;
+        else throw new Error(`Unsupported image upload field: ${key}`);
+      }
+      if (images.length) body.images = images;
+    } else body = await request.json();
+  } catch (error) {
+    return errorResponse(HTTP_STATUS.BAD_REQUEST, error.message || "Invalid image request body");
   }
 
   const url = new URL(request.url);

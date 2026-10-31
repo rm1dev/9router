@@ -1,10 +1,11 @@
 // Muse Web (muse.ai Hatch) image adapter — delegates to the executor, which
 // drives the Hatch agent in a real browser page and downloads the generated
 // attachment in-page as base64.
-import { nowSec } from "./_base.js";
+import { nowSec, getReferenceImages } from "./_base.js";
 import { getExecutor } from "../../executors/index.js";
 
 export default {
+  supportsReferenceImages: true,
   // Delegate to executor instead of building URL/headers/body manually
   useExecutor: true,
 
@@ -20,6 +21,7 @@ export default {
     const media = await executor.generateMedia({
       prompt: body.prompt,
       kind: "image",
+      images: getReferenceImages(body),
       size: body.size,
       n: Math.max(1, Math.min(4, Number(body.n) || 1)),
       credentials,

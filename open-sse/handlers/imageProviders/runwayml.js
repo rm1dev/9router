@@ -1,10 +1,11 @@
 // Runway ML — async submit + /tasks/{id} polling
-import { sleep, nowSec, sizeToAspectRatio, POLL_INTERVAL_MS, POLL_TIMEOUT_MS } from "./_base.js";
+import { sleep, nowSec, sizeToAspectRatio, POLL_INTERVAL_MS, POLL_TIMEOUT_MS, getReferenceImages } from "./_base.js";
 import { PROVIDER_MEDIA } from "../../providers/index.js";
 
 const BASE_URL = PROVIDER_MEDIA["runwayml"]?.imageConfig?.baseUrl;
 
 export default {
+  supportsReferenceImages: true,
   async: true,
   buildUrl: (model) => {
     // Image models (gen4_image*) → text_to_image; video models → image_to_video
@@ -24,7 +25,8 @@ export default {
     if (isVideo) {
       return { promptText: body.prompt, model, ratio, duration: 5, ...(body.image ? { promptImage: body.image } : {}) };
     }
-    return { promptText: body.prompt, model, ratio, ...(body.image ? { referenceImages: [{ uri: body.image }] } : {}) };
+    const images = getReferenceImages(body);
+    return { promptText: body.prompt, model, ratio, ...(images.length ? { referenceImages: images.map(uri => ({ uri })) } : {}) };
   },
   async parseResponse(response, { headers }) {
     const { id } = await response.json();

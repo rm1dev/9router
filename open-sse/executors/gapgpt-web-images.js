@@ -1,6 +1,8 @@
 import WebSocket from "ws";
 import { randomInt, randomUUID } from "node:crypto";
 import { GAPGPT_IMAGE_GENERATION_TIMEOUT_MS } from "../config/gapgptWebImages.js";
+import { fetchPublic } from "../../src/shared/utils/ssrfGuard.js";
+import { readReferenceImage } from "../handlers/imageProviders/_base.js";
 
 const BASE = "https://gapgpt.app";
 const IMAGE_MODELS = {
@@ -20,12 +22,37 @@ const IMAGE_MODELS = {
   "A-GEMINI-3-PRO-IMAGE": "Gemini-3-pro-image",
 };
 
-export function generateGapGptImage({ model, prompt, cookie, signal }) {
+export async function generateGapGptImage({ model, prompt, cookie, signal, images = [] }) {
   const id = String(model).replace(/^(gapgpt-web|gg-web)\//i, "");
   const imageModel = IMAGE_MODELS[id] || id;
   if (!prompt || typeof prompt !== "string") throw new Error("Image prompt is required");
   if (!cookie?.includes("accessToken=") || !cookie?.includes("__Host-gap_dk=")) {
     throw Object.assign(new Error("GapGPT requires accessToken and __Host-gap_dk cookies"), { status: 401 });
+  }
+  if (images.length > 10) throw Object.assign(new Error("GapGPT accepts at most 10 reference images"), { status: 400 });
+  const referenceTokens = [];
+  for (const [index, image] of images.entries()) {
+    let blob;
+    if (/^https?:\/\//i.test(image)) {
+      const response = await fetchPublic(image, { signal: signal || AbortSignal.timeout(30000) });
+      blob = await readReferenceImage(response);
+    } else {
+      const match = /^data:(image\/[^;]+);base64,(.+)$/is.exec(image);
+      blob = new Blob([Buffer.from(match ? match[2] : image, "base64")], { type: match ? match[1] : "image/png" });
+    }
+    if (!blob.type.startsWith("image/") || !blob.size || blob.size > 20 * 1024 * 1024) throw Object.assign(new Error("Invalid reference image type or size"), { status: 400 });
+    const form = new FormData();
+    form.append("file", blob, `reference-${index}.png`);
+    const csrf = cookie.split(";").map(pair => pair.trim()).find(pair => pair.startsWith("csrftoken="))?.slice(10);
+    const response = await fetch(`${BASE}/api/v1/upload_file`, {
+      method: "POST", body: form, redirect: "error",
+      headers: { Cookie: cookie, Origin: BASE, Referer: `${BASE}/`, "X-Auth-Cookie": "1", ...(csrf ? { "X-CSRFToken": csrf } : {}) },
+      signal: signal || AbortSignal.timeout(60000),
+    });
+    if (!response.ok) throw Object.assign(new Error(`GapGPT reference upload failed (${response.status})`), { status: response.status });
+    const result = await response.json();
+    if (typeof result.file_token !== "string" || !result.file_token) throw new Error("GapGPT upload returned no file token");
+    referenceTokens.push(result.file_token);
   }
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`${BASE.replace("https:", "wss:")}/ws/salam`, {
@@ -85,7 +112,7 @@ export function generateGapGptImage({ model, prompt, cookie, signal }) {
       if (!generating && message.status === "completed") {
         generating = true;
         send({ type: "generate_image", message_token: messageToken,
-          prompt, model: imageModel, reference_file_tokens: [],
+          prompt, model: imageModel, reference_file_tokens: referenceTokens,
         });
         return;
       }

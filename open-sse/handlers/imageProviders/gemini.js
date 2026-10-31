@@ -1,6 +1,7 @@
 // Google Gemini adapter (Nano Banana models)
-import { nowSec } from "./_base.js";
+import { nowSec, getReferenceImages, readReferenceImage } from "./_base.js";
 import { PROVIDER_MEDIA } from "../../providers/index.js";
+import { fetchPublic } from "../../../src/shared/utils/ssrfGuard.js";
 
 const BASE_URL = PROVIDER_MEDIA["gemini"]?.imageConfig?.baseUrl;
 
@@ -17,19 +18,27 @@ function resolveImageInput(input) {
 }
 
 export default {
+  supportsReferenceImages: true,
   buildUrl: (model, creds) => {
     const apiKey = creds?.apiKey || creds?.accessToken;
     const modelId = model.replace(/^models\//, "");
     return `${BASE_URL}/${modelId}:generateContent?key=${encodeURIComponent(apiKey)}`;
   },
   buildHeaders: () => ({ "Content-Type": "application/json" }),
-  buildBody: (_model, body) => {
-    const parts = [{ text: body.prompt }];
-    const imageInput = body.image || (Array.isArray(body.images) && body.images[0]);
-    if (imageInput) {
-      const inlineData = resolveImageInput(imageInput);
-      if (inlineData) parts.unshift(inlineData);
+  buildBody: async (_model, body) => {
+    const parts = [];
+    for (let image of getReferenceImages(body)) {
+      if (/^https?:\/\//i.test(image)) {
+        const response = await fetchPublic(image, { signal: AbortSignal.timeout(30000) });
+        const blob = await readReferenceImage(response);
+        if (!blob.type.startsWith("image/") || blob.size > 20 * 1024 * 1024) throw new Error("Invalid reference type or size");
+        image = `data:${blob.type};base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`;
+      }
+      const inlineData = resolveImageInput(image);
+      if (!inlineData) throw new Error("Gemini reference images must be base64 or image data URLs");
+      parts.push(inlineData);
     }
+    parts.push({ text: body.prompt });
     return {
       contents: [{ parts }],
       generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
