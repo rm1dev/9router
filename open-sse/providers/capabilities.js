@@ -837,6 +837,9 @@ export function getCapabilitiesForModel(provider, model) {
     };
   }
 
+  // Notion's adapter is text-only even when the underlying model supports tools or vision.
+  if (provider === "notion-web") return { ...DEFAULT_CAPABILITIES, tools: false, vision: false, pdf: false, audioInput: false, videoInput: false };
+
   // 1. Provider-specific override
   if (provider) {
     const providerCaps = PROVIDER_CAPABILITIES[provider];

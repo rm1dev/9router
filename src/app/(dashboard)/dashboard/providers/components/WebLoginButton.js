@@ -14,6 +14,7 @@ export const WEB_LOGIN_PROVIDERS = new Set([
   "muse-web",
   "deepseek-web",
   "gapgpt-web",
+  "notion-web",
   "uc-web",
 ]);
 
@@ -86,7 +87,9 @@ export default function WebLoginButton({ providerId, onConnected, size = "sm" })
     if (typeof window !== "undefined") window.localStorage.setItem(`weblogin:profile:${providerId}`, value);
   }, [providerId]);
 
-  const busy = phase === "opening" || phase === "waiting";
+  const [workspaces, setWorkspaces] = useState([]);
+  const [workspaceId, setWorkspaceId] = useState("");
+  const busy = phase === "opening" || phase === "waiting" || phase === "saving";
 
   const handleClose = useCallback(() => {
     if (busy) return;
@@ -104,7 +107,13 @@ export default function WebLoginButton({ providerId, onConnected, size = "sm" })
       try {
         const res = await fetch(`/api/providers/web-login?provider=${encodeURIComponent(providerId)}`, { cache: "no-store" });
         const data = await res.json();
-        if (data.status === "success") {
+        if (data.status === "select_workspace") {
+          stopPolling();
+          setWorkspaces(data.workspaces || []);
+          setWorkspaceId("");
+          setPhase("select_workspace");
+          setMessage("");
+        } else if (data.status === "success") {
           stopPolling();
           setPhase("success");
           setMessage(data.email ? `${translate("Signed in as")} ${data.email}` : "Connection saved");
@@ -151,6 +160,25 @@ export default function WebLoginButton({ providerId, onConnected, size = "sm" })
       setMessage(error?.message || translate("Failed to start login"));
     }
   }, [providerId, profile, poll]);
+
+  const handleWorkspaceSave = async () => {
+    setPhase("saving");
+    try {
+      const res = await fetch("/api/providers/web-login", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: providerId, spaceId: workspaceId }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.status !== "success") throw new Error(data.error || "Failed to save connection");
+      setPhase("success");
+      setMessage(translate("Connection saved"));
+      onConnected?.();
+    } catch (error) {
+      setPhase("select_workspace");
+      setMessage(error.message);
+    }
+  };
 
   const handleCancel = useCallback(() => {
     fetch(`/api/providers/web-login?provider=${encodeURIComponent(providerId)}`, { method: "DELETE" }).catch(() => {});
@@ -233,7 +261,18 @@ export default function WebLoginButton({ providerId, onConnected, size = "sm" })
             </div>
           </div>
 
-          {phase !== "idle" && (
+          {phase === "select_workspace" && (
+            <div className="flex flex-col gap-2">
+              <label htmlFor="notion-workspace" className="text-sm font-medium">{translate("Workspace")}</label>
+              <select id="notion-workspace" value={workspaceId} onChange={(event) => setWorkspaceId(event.target.value)} className="w-full rounded border border-accent/30 bg-sidebar p-2 text-sm text-text-primary">
+                <option value="">{translate("Select a workspace")}</option>
+                {workspaces.map((workspace) => <option key={workspace.spaceId} value={workspace.spaceId}>{workspace.name}{workspace.tier ? ` (${workspace.tier})` : ""}</option>)}
+              </select>
+              {message && <p role="alert" className="text-xs text-red-500">{message}</p>}
+            </div>
+          )}
+
+          {phase !== "idle" && phase !== "select_workspace" && (
             <div className="rounded border border-accent/20 bg-sidebar/50 p-3">
               {phase === "success" ? (
                 <div className="flex items-center gap-2 text-sm font-medium text-green-400">
@@ -276,8 +315,13 @@ export default function WebLoginButton({ providerId, onConnected, size = "sm" })
           <div className="flex gap-2">
             {phase === "success" ? (
               <Button onClick={handleClose} fullWidth>{translate("Done")}</Button>
+            ) : phase === "select_workspace" ? (
+              <>
+                <Button onClick={handleWorkspaceSave} disabled={!workspaceId} fullWidth>{translate("Save connection")}</Button>
+                <Button onClick={handleCancel} variant="ghost" fullWidth>{translate("Cancel")}</Button>
+              </>
             ) : busy ? (
-              <Button onClick={handleCancel} variant="ghost" fullWidth>{translate("Cancel")}</Button>
+              <Button disabled={phase === "saving"} onClick={handleCancel} variant="ghost" fullWidth>{translate("Cancel")}</Button>
             ) : (
               <>
                 <Button onClick={handleStart} fullWidth disabled={phase === "error" && !message}>

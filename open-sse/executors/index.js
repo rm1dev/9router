@@ -18,6 +18,7 @@ import { GrokCliExecutor } from "./grok-cli.js";
 import { PerplexityWebExecutor } from "./perplexity-web.js";
 import { DeepSeekWebExecutor } from "./deepseek-web.js";
 import { GapGptWebExecutor } from "./gapgpt-web.js";
+import { NotionWebExecutor } from "./notion-web.js";
 import { GeminiWebExecutor } from "./gemini-web.js";
 import { MuseWebExecutor } from "./muse-web.js";
 import { VeoAiFreeWebExecutor } from "./veoaifree-web.js";
@@ -63,6 +64,7 @@ const executors = {
   "perplexity-web": new PerplexityWebExecutor(),
   "deepseek-web": new DeepSeekWebExecutor(),
   "gapgpt-web": new GapGptWebExecutor(),
+  "notion-web": new NotionWebExecutor(),
   "gemini-web": new GeminiWebExecutor(),
   "muse-web": new MuseWebExecutor(),
   "veoaifree-web": new VeoAiFreeWebExecutor(),

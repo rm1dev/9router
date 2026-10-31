@@ -27,6 +27,13 @@ export async function GET(request) {
   if (session.status === "success" && !session.savedConnectionId) {
     try {
       const config = getWebLoginConfig(provider);
+      if (provider === "notion-web" && !session.selectedWorkspace) {
+        const { listNotionWorkspaces } = await import("open-sse/services/notionWeb.js");
+        session.workspaces ||= await listNotionWorkspaces(session.credential);
+        if (!session.workspaces.length) throw new Error("No accessible Notion AI workspace");
+        if (session.workspaces.length === 1) session.selectedWorkspace = session.workspaces[0];
+        else return NextResponse.json({ provider, status: "select_workspace", workspaces: session.workspaces.map(({ spaceId, name, tier }) => ({ spaceId, name, tier })) });
+      }
       const identity = await fetchWebIdentity(provider, session.credential);
       // A login that just finished in the browser is authoritative: an
       // "invalid" verdict here means the probe endpoint rejected the request
@@ -44,10 +51,11 @@ export async function GET(request) {
 
       const providerName = AI_PROVIDERS[provider]?.name || provider;
       const email = identity.email || "";
-      const name = email || providerName;
+      const name = session.selectedWorkspace ? `${email || providerName} · ${session.selectedWorkspace.name}` : email || providerName;
       session.accountEmail = email;
       const providerSpecificData = {
         authMethod: "web-login",
+        ...(session.selectedWorkspace ? { spaceId: session.selectedWorkspace.spaceId, spaceName: session.selectedWorkspace.name } : {}),
         ...(config?.credentialFrom === "localStorageValue" ? { tokenSource: "localStorage" } : {}),
       };
 
@@ -55,7 +63,7 @@ export async function GET(request) {
       // second Google account keeps its own row; providers that expose no email
       // fall back to the single web-login row this button created.
       const webLoginRows = (await getProviderConnections({ provider }))
-        .filter((c) => c.providerSpecificData?.authMethod === "web-login")
+        .filter((c) => c.providerSpecificData?.authMethod === "web-login" && (!session.selectedWorkspace || c.providerSpecificData?.spaceId === session.selectedWorkspace.spaceId))
         .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
       const existing = email
         ? webLoginRows.find((c) => c.email === email)
@@ -128,6 +136,22 @@ export async function POST(request) {
   } catch (error) {
     return NextResponse.json({ error: error?.message || "Failed to start login" }, { status: 500 });
   }
+}
+
+// PATCH finalizes a captured Notion session only after an authorized workspace selection.
+export async function PATCH(request) {
+  let body;
+  try { body = await request.json(); } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  const session = getWebLoginStatus("notion-web");
+  if (body?.provider !== "notion-web" || session?.status !== "success" || session.savedConnectionId || !session.credential) {
+    return NextResponse.json({ error: "No Notion login awaiting workspace selection" }, { status: 409 });
+  }
+  const workspace = session.workspaces?.find((item) => item.spaceId === body.spaceId);
+  if (!workspace) return NextResponse.json({ error: "Invalid workspace selection" }, { status: 400 });
+  session.selectedWorkspace = workspace;
+  return GET({ nextUrl: new URL("http://localhost/api/providers/web-login?provider=notion-web") });
 }
 
 // DELETE /api/providers/web-login?provider=x → cancel a running session

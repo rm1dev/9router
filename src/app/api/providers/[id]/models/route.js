@@ -249,6 +249,12 @@ const PROVIDER_MODELS_CONFIG = {
       errorLabel: "Failed to fetch GapGPT models"
     })
   },
+  "notion-web": {
+    customResolver: async (connection) => {
+      const { fetchNotionModels } = await import("open-sse/services/notionWeb.js");
+      return { models: await fetchNotionModels(connection) };
+    },
+  },
   "gapgpt-web": {
     customResolver: async () => {
       const { fetchLiveGapGptWebModels } = await import("open-sse/services/gapgptWebModels.js");
