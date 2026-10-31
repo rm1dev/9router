@@ -3,6 +3,13 @@ import { notionCookie, notionRequest, resolveNotionAccount, NOTION_ORIGIN } from
 import { chatChunkSse } from "../utils/sse.js";
 import { SSE_DONE, SSE_HEADERS_NO_BUFFER } from "../utils/sseConstants.js";
 import { setTimeout as delay } from "node:timers/promises";
+import { createHash } from "node:crypto";
+
+const conversations = new Map();
+
+export function notionConversationKey(cookie, spaceId, model, body, messages) {
+  return createHash("sha256").update(JSON.stringify([cookie, spaceId, model, body.tools, body.reasoning_effort, messages])).digest("hex");
+}
 
 export function notionPrompt(body) {
   if (body.functions?.length) throw Object.assign(new Error("Use tools instead of legacy functions with Notion Web"), { status: 400 });
@@ -50,15 +57,33 @@ export class NotionWebExecutor extends BaseExecutor {
       const prompt = notionPrompt(body);
       const cookie = notionCookie(credentials);
       const account = await resolveNotionAccount(cookie, { spaceId: credentials?.providerSpecificData?.spaceId, signal: requestSignal });
-      const threadId = crypto.randomUUID();
-      await notionRequest(cookie, "createAgentThread", {
+      const last = body.messages.at(-1);
+      const lookupKey = notionConversationKey(cookie, account.spaceId, model, body, body.messages.slice(0, -1));
+      const cached = last?.role === "user" ? conversations.get(lookupKey) : null;
+      const continuation = cached && cached.expires > Date.now() ? cached : null;
+      if (continuation) conversations.delete(lookupKey);
+      const threadId = continuation?.threadId || crypto.randomUUID();
+      const pendingId = crypto.randomUUID();
+      if (continuation) await notionRequest(cookie, "sendEventToAgentThread", {
+        spaceId: account.spaceId, threadId,
+        event: { type: "user.message", content: [{ type: "text", text: [[notionPrompt({ ...body, messages: [last] })]] }] },
+        policies: { approval_mode: "ask" }, browserEnabled: false, clientEventId: pendingId,
+      }, { ...account, signal: requestSignal });
+      else await notionRequest(cookie, "createAgentThread", {
         type: "personal_agent", spaceId: account.spaceId, threadId,
         ...(model !== "auto" ? { model } : {}),
         ...(body.reasoning_effort && body.reasoning_effort !== "auto" ? { reasoningEffort: body.reasoning_effort } : {}),
         content: [{ type: "text", text: [[prompt]] }],
         policies: { approval_mode: "ask" },
         agentMemorySettings: { useMemories: false, excludeChatFromMemories: true },
-        browserEnabled: false, clientMessageId: crypto.randomUUID(),
+        browserEnabled: false, clientMessageId: pendingId,
+      }, { ...account, signal: requestSignal });
+      if (!continuation) await notionRequest(cookie, "saveTransactions", {
+        requestId: crypto.randomUUID(),
+        transactions: [{
+          id: crypto.randomUUID(), spaceId: account.spaceId,
+          operations: [{ pointer: { table: "thread", id: threadId, spaceId: account.spaceId }, path: [], command: "update", args: { archived_at: Date.now() } }],
+        }],
       }, { ...account, signal: requestSignal });
       const id = `chatcmpl-${crypto.randomUUID()}`;
       const created = Math.floor(Date.now() / 1000);
@@ -67,7 +92,7 @@ export class NotionWebExecutor extends BaseExecutor {
       return result(new Response(new ReadableStream({
         async start(output) {
           const entities = new Map();
-          let cursor;
+          let cursor = continuation?.cursor;
           let sent = "";
           const emit = (delta, finishReason = null) => output.enqueue(encoder.encode(chatChunkSse({ id, created, model, delta, finishReason })));
           try {
@@ -78,12 +103,18 @@ export class NotionWebExecutor extends BaseExecutor {
                 spaceId: account.spaceId, threadId, direction: cursor ? "forward" : "backward",
                 ...(cursor ? { cursor } : { limit: 100 }),
               }, { ...account, signal: requestSignal });
-              const state = notionTranscript(page.patches, entities);
+              const state = notionTranscript((page.patches || []).filter((patch) => !continuation || patch.op !== "put" || patch.entity.sequence > continuation.sequence), entities);
               if (state.failure) throw new Error("Notion stopped with an error or requires tool approval; continue in Notion.");
               if (!state.text.startsWith(sent)) throw new Error("Notion replaced previously streamed text");
               if (state.text.length > sent.length) { emit({ content: state.text.slice(sent.length) }); sent = state.text; }
               if (state.completed) {
                 if (state.completed.stop_reason !== "end_turn") throw new Error(`Notion stopped: ${state.completed.stop_reason || "unknown"}`);
+                // ponytail: bounded process-local continuation; restart/edited history starts a new thread.
+                if (page.forward_cursor && Number.isFinite(state.completed.sequence)) {
+                  const key = notionConversationKey(cookie, account.spaceId, model, body, [...body.messages, { role: "assistant", content: sent }]);
+                  conversations.set(key, { threadId, cursor: page.forward_cursor, sequence: state.completed.sequence, expires: Date.now() + 3600000 });
+                  if (conversations.size > 200) conversations.delete(conversations.keys().next().value);
+                }
                 emit({}, "stop");
                 output.enqueue(encoder.encode(SSE_DONE));
                 output.close();

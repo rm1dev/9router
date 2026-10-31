@@ -39,3 +39,13 @@ assert.ok(getWebLoginConfig("notion-web").tokenSources.some((source) => source.n
 const invalid = await new NotionWebExecutor().execute({ model: "auto", body: { tools: [{}] }, credentials: {} });
 assert.equal(invalid.response.status, 400);
 console.log("Notion Web checks passed");
+const { notionConversationKey } = await import("../../open-sse/executors/notion-web.js");
+const { parseNotionUsage } = await import("../../open-sse/services/usage/notion-web.js");
+const key = (cookie, space) => notionConversationKey(cookie, space, "auto", {}, [{ role: "user", content: "hello" }]);
+assert.notEqual(key("account-a", "workspace-a"), key("account-b", "workspace-a"));
+assert.notEqual(key("account-a", "workspace-a"), key("account-a", "workspace-b"));
+const quota = parseNotionUsage({ basicCredits: { userUsage: 12, userLimit: 50, spaceUsage: 70, spaceLimit: 50 }, premiumCredits: { perSource: { monthlyAllocated: { usageTotal: 3, limit: 10 } } } }, { name: "Team", tier: "business" });
+assert.equal(quota.quotas["User basic credits"].remaining, 38);
+assert.equal(quota.quotas["Workspace basic credits"].remaining, 0);
+assert.equal(quota.quotas["Premium monthlyAllocated"].remaining, 7);
+assert.throws(() => parseNotionUsage({}, {}), /incomplete/);

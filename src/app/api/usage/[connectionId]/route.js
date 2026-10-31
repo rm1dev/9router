@@ -152,7 +152,8 @@ export async function GET(request, { params }) {
     const isApikeyEligible =
       isApikeyAuth && USAGE_APIKEY_PROVIDERS.includes(connection.provider);
 
-    if (!isOAuth && !isApikeyEligible) {
+    const isNotionCookie = connection.provider === "notion-web" && connection.authType === "cookie";
+    if (!isOAuth && !isApikeyEligible && !isNotionCookie) {
       return Response.json({ message: "Usage not available for this connection" });
     }
 

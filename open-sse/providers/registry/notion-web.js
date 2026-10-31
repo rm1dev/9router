@@ -8,6 +8,7 @@ export default {
   authType: "cookie",
   authHint: "Paste the full app.notion.com Cookie header (token_v2 and session cookies). Use Fetch Models for your workspace catalog.",
   serviceKinds: ["llm"],
+  features: { usage: true, usageApikey: true },
   transport: { baseUrl: "https://app.notion.com/api/v3/createAgentThread", format: "openai", authType: "cookie", forceStream: true },
   models: [
     { id: "auto", name: "Auto" },
