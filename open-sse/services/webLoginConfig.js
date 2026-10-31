@@ -8,6 +8,15 @@
 /** @typedef {{ type: "cookie" | "localStorage", name: string }} TokenSource */
 
 export const WEB_LOGIN_CONFIGS = {
+  "notion-web": {
+    loginUrl: "https://app.notion.com/",
+    cookieDomain: ".app.notion.com",
+    tokenSources: [
+      { type: "cookie", name: "token_v2" },
+      { type: "cookie", name: "__Host-session_binding" },
+      { type: "cookie", name: "device_id" },
+    ],
+  },
   "grok-web": {
     loginUrl: "https://grok.com/",
     cookieDomain: ".grok.com",

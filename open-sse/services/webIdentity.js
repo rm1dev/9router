@@ -74,6 +74,15 @@ function geminiHttpsGet(url, headers) {
 }
 
 const PROBES = {
+  async "notion-web"(credential) {
+    try {
+      const { notionCookie, resolveNotionAccount } = await import("./notionWeb.js");
+      const account = await resolveNotionAccount(notionCookie(credential), { signal: AbortSignal.timeout(TIMEOUT_MS) });
+      return OK(account.email);
+    } catch (error) {
+      return error.status === 401 ? REJECTED(error.message) : UNKNOWN(error.message);
+    }
+  },
   async "deepseek-web"(credential) {
     let token = String(credential || "").trim();
     try {
