@@ -25,11 +25,9 @@ import { getClinepassUsage } from "./usage/clinepass.js";
 import { resolveQoderCredentials } from "./qoderModels.js";
 import { getGlmUsage } from "./usage/glm.js";
 import { getCommandCodeUsage } from "./usage/commandcode.js";
-<<<<<<< HEAD
 import { getSyntheticUsage } from "./usage/synthetic.js";
-=======
 import { getGapGptUsage } from "./usage/gapgpt.js";
->>>>>>> 6cfcbf5e (feat(gapgpt): integrate GapGPT provider and quota tracking)
+import { getNotionUsage } from "./usage/notion-web.js";
 import {
   getIflowUsage,
   getOllamaUsage,
@@ -44,6 +42,7 @@ import {
  */
 // provider → usage handler (ctx carries every arg each handler needs)
 const USAGE_HANDLERS = {
+  "notion-web": (c) => getNotionUsage(c),
   github: (c) => getGitHubUsage(c.accessToken, c.providerSpecificData, c.proxyOptions),
   "gemini-cli": (c) => getGeminiUsage(c.accessToken, c.providerDataWithProjectId, c.proxyOptions),
   antigravity: (c) => getAntigravityUsage(c.accessToken, c.providerSpecificData, c.proxyOptions),

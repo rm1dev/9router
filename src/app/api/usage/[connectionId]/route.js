@@ -154,8 +154,9 @@ export async function GET(request, { params }) {
       isApikeyAuth && USAGE_APIKEY_PROVIDERS.includes(connection.provider);
     // Lease connections borrow the desktop app's token inside the usage handler.
     const isLease = isLeaseConnection(connection);
+    const isNotionCookie = connection.provider === "notion-web" && connection.authType === "cookie";
 
-    if (!isOAuth && !isApikeyEligible && !isLease) {
+    if (!isOAuth && !isApikeyEligible && !isLease && !isNotionCookie) {
       return Response.json({ message: "Usage not available for this connection" });
     }
 
