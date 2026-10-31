@@ -50,7 +50,11 @@ export function GenericExampleCard({ providerId, kind }) {
   const allowManualModel = needsModel && kindModels.length === 0;
   const [selectedModel, setSelectedModel] = useState(kindModels[0]?.id ?? "");
   const selectedModelObj = kindModels.find((m) => m.id === selectedModel);
-  const supportsEdit = !!selectedModelObj?.capabilities?.includes("edit");
+  const supportsEdit = !!selectedModelObj?.capabilities?.includes("edit") || (kind === "image" && (
+    ["codex", "chatgpt-web", "gemini", "gemini-web", "antigravity", "nanobanana", "muse-web", "sdwebui"].includes(providerId)
+    || (providerId === "openai" && selectedModel.startsWith("gpt-image-"))
+    || (providerId === "runwayml" && selectedModel.includes("image"))
+  ));
   const supportsMask = !!selectedModelObj?.capabilities?.includes("mask");
 
   const [input, setInput] = useState(safeExConfig.defaultInput || "");

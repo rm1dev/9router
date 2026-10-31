@@ -200,6 +200,7 @@ function buildSseResponse(providerResponse, log, onSuccess, onUsage) {
 }
 
 export default {
+  supportsReferenceImages: true,
   stream: true,
   // ChatGPT Free accounts have the image_generation tool stripped server-side
   // (upstream returns 400 "Tool choice 'image_generation' must be specified with 'tools' parameter").
@@ -221,10 +222,11 @@ export default {
     };
   },
   buildBody: (model, body) => {
-    const refs = [];
-    if (Array.isArray(body.images)) body.images.forEach((i) => { const u = toDataUrl(i); if (u) refs.push(u); });
-    const single = toDataUrl(body.image);
-    if (single) refs.push(single);
+    // Same request shapes Antigravity accepts, so clients can use either field name.
+    const refs = [body.reference_images, body.images, body.reference_image, body.image]
+      .flatMap((v) => (Array.isArray(v) ? v : v ? [v] : []))
+      .map(toDataUrl)
+      .filter(Boolean);
     const detail = body.image_detail || CODEX_REF_DETAIL;
     const { responsesModel, toolModel } = resolveCodexImageModels(model);
     const imgTool = { type: "image_generation", output_format: (body.output_format || "png").toLowerCase() };

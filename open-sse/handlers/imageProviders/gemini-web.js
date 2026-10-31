@@ -1,9 +1,10 @@
 // Gemini Web image adapter — delegates to the executor's DOM-driven image
 // generation (type the prompt, wait for the rendered image, download in-page).
-import { nowSec } from "./_base.js";
+import { nowSec, getReferenceImages } from "./_base.js";
 import { getExecutor } from "../../executors/index.js";
 
 export default {
+  supportsReferenceImages: true,
   useExecutor: true,
 
   // Stubs - required by imageGenerationCore interface but unused with useExecutor
@@ -17,6 +18,7 @@ export default {
 
     const media = await executor.generateMedia({
       prompt: body.prompt,
+      images: getReferenceImages(body),
       size: body.size,
       n: Math.max(1, Math.min(4, Number(body.n) || 1)),
       credentials,

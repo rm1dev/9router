@@ -32,6 +32,8 @@ import {
 } from "./gemini-web/modeSelection.js";
 import { readReplyState, waitForGeminiReply } from "./gemini-web/domCapture.js";
 import { buildImagePrompt, waitForGeminiImage } from "./gemini-web/imageGen.js";
+import { fetchPublic } from "../../src/shared/utils/ssrfGuard.js";
+import { readReferenceImage } from "../handlers/imageProviders/_base.js";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -752,7 +754,7 @@ export class GeminiWebExecutor extends BaseExecutor {
    *
    * @returns {Promise<Array<{ b64: string, mime: string, width?: number, height?: number }>>}
    */
-  async generateMedia({ prompt, n = 1, size, credentials, signal, log }) {
+  async generateMedia({ prompt, n = 1, size, images = [], credentials, signal, log }) {
     if (!prompt) throw new Error("prompt is required for image generation");
     const cookie = resolveGeminiWebCookie(credentials);
     if (!cookie) throw new Error("Missing Gemini cookies");
@@ -769,6 +771,20 @@ export class GeminiWebExecutor extends BaseExecutor {
         const page = await context.newPage();
         const readQuota = await openGeminiApp(page);
         const inputEl = await waitForGeminiComposer(page, readQuota);
+        if (images.length) {
+          const files = [];
+          for (const [index, ref] of images.entries()) {
+            let blob;
+            if (/^https?:\/\//i.test(ref)) blob = await readReferenceImage(await fetchPublic(ref, { signal: signal || AbortSignal.timeout(30000) }));
+            else {
+              const match = /^data:(image\/[^;]+);base64,(.+)$/is.exec(ref);
+              blob = new Blob([Buffer.from(match ? match[2] : ref, "base64")], { type: match ? match[1] : "image/png" });
+            }
+            if (!blob.size || blob.size > 20 * 1024 * 1024) throw new Error("Invalid reference image size");
+            files.push({ name: `reference-${index}.png`, mimeType: blob.type, buffer: Buffer.from(await blob.arrayBuffer()) });
+          }
+          await page.locator('input[type="file"]').first().setInputFiles(files, { timeout: 15000 });
+        }
         await inputEl.click();
         await page.keyboard.insertText(buildImagePrompt(prompt, size));
         await page.waitForTimeout(300);

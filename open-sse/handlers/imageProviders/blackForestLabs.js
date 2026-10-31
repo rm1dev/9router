@@ -5,6 +5,7 @@ import { PROVIDER_MEDIA } from "../../providers/index.js";
 const BASE_URL = PROVIDER_MEDIA["black-forest-labs"]?.imageConfig?.baseUrl;
 
 export default {
+  supportsReferenceImages: true,
   async: true,
   buildUrl: (model) => `${BASE_URL}/${model}`,
   buildHeaders: (creds) => {
@@ -18,6 +19,7 @@ export default {
       if (w) req.width = w;
       if (h) req.height = h;
     }
+    if (body.images?.length) throw new Error("This BFL adapter accepts one reference image per request");
     if (body.image) req.image_prompt = body.image;
     return req;
   },

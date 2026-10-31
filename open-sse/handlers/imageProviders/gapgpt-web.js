@@ -1,4 +1,4 @@
-import { nowSec } from "./_base.js";
+import { nowSec, getReferenceImages } from "./_base.js";
 import { generateGapGptImage } from "../../executors/gapgpt-web-images.js";
 import { assertPublicUrlResolved } from "../../../src/shared/utils/ssrfGuard.js";
 import { GAPGPT_IMAGE_DOWNLOAD_TIMEOUT_MS, GAPGPT_IMAGE_MAX_BYTES, GAPGPT_IMAGE_MAX_REDIRECTS } from "../../config/gapgptWebImages.js";
@@ -50,6 +50,7 @@ export async function downloadGapGptImage(value, cookie) {
 }
 
 export default {
+  supportsReferenceImages: true,
   useExecutor: true,
   buildUrl: () => "",
   buildHeaders: () => ({}),
@@ -62,7 +63,7 @@ export default {
     }
     const data = [];
     for (let i = 0; i < n; i++) {
-      const urls = await generateGapGptImage({ model, prompt: body.prompt, cookie });
+      const urls = await generateGapGptImage({ model, prompt: body.prompt, cookie, images: getReferenceImages(body) });
       for (const value of urls) {
         const url = new URL(value);
         // Never forward session cookies to a model-controlled or redirected host.

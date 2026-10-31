@@ -3,7 +3,7 @@ import { HTTP_STATUS } from "../config/runtimeConfig.js";
 import { refreshWithRetry } from "../services/tokenRefresh.js";
 import { getExecutor } from "../executors/index.js";
 import { getImageAdapter } from "./imageProviders/index.js";
-import { urlToBase64 } from "./imageProviders/_base.js";
+import { urlToBase64, normalizeImageReferences } from "./imageProviders/_base.js";
 
 function serializeRequestBody(requestBody) {
   if (typeof FormData !== "undefined" && requestBody instanceof FormData) return requestBody;
@@ -50,6 +50,15 @@ export async function handleImageGenerationCore({
       HTTP_STATUS.BAD_REQUEST,
       `Provider '${provider}' does not support image generation`
     );
+  }
+
+  try {
+    body = normalizeImageReferences(body);
+    if ((body.image || body.images?.length) && adapter.supportsReferenceImages !== true) {
+      throw new Error(`Reference images are not implemented for provider '${provider}'`);
+    }
+  } catch (error) {
+    return createErrorResult(HTTP_STATUS.BAD_REQUEST, error.message);
   }
 
   // Executor-delegating adapters: skip manual URL/headers/body, use the proven executor flow
@@ -99,8 +108,8 @@ export async function handleImageGenerationCore({
   let requestBody;
 
   try {
-    url = adapter.buildUrl(model, credentials);
     requestBody = await adapter.buildBody(model, body);
+    url = adapter.buildUrl(model, credentials, requestBody);
     headers = adapter.buildHeaders(credentials, requestBody, model, body);
   } catch (error) {
     return createErrorResult(HTTP_STATUS.BAD_REQUEST, error.message || `Invalid ${provider} image request`);
@@ -143,7 +152,7 @@ export async function handleImageGenerationCore({
       try {
         const retryBody = await adapter.buildBody(model, body);
         const retryHeaders = adapter.buildHeaders(credentials, retryBody, model, body);
-        const retryUrl = adapter.buildUrl(model, credentials);
+        const retryUrl = adapter.buildUrl(model, credentials, retryBody);
         providerResponse = await fetch(retryUrl, {
           method: "POST",
           headers: retryHeaders,

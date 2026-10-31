@@ -1,5 +1,5 @@
 // NanoBanana API — async submit + poll record-info
-import { sleep, nowSec, sizeToAspectRatio, POLL_INTERVAL_MS, POLL_TIMEOUT_MS } from "./_base.js";
+import { sleep, nowSec, sizeToAspectRatio, POLL_INTERVAL_MS, POLL_TIMEOUT_MS, getReferenceImages } from "./_base.js";
 import { PROVIDER_MEDIA } from "../../providers/index.js";
 
 const IMG_CFG = PROVIDER_MEDIA["nanobanana"]?.imageConfig || {};
@@ -7,6 +7,7 @@ const SUBMIT_URL = IMG_CFG.baseUrl;
 const POLL_BASE = IMG_CFG.pollUrl;
 
 export default {
+  supportsReferenceImages: true,
   async: true,
   buildUrl: () => SUBMIT_URL,
   buildHeaders: (creds) => {
@@ -17,7 +18,8 @@ export default {
   },
   buildBody: (_model, body) => {
     const ratio = sizeToAspectRatio(body.size);
-    const isEdit = !!(body.image || (Array.isArray(body.images) && body.images.length));
+    const images = getReferenceImages(body);
+    const isEdit = images.length > 0;
     const req = {
       prompt: body.prompt,
       type: isEdit ? "IMAGETOIAMGE" : "TEXTTOIAMGE",
@@ -27,9 +29,7 @@ export default {
       callBackUrl: "https://localhost/callback",
     };
     if (isEdit) {
-      const urls = Array.isArray(body.images) ? body.images.filter(Boolean) : [];
-      if (body.image) urls.push(body.image);
-      req.imageUrls = urls;
+      req.imageUrls = images;
     }
     return req;
   },

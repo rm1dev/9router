@@ -6,6 +6,7 @@
 
 import { randomUUID } from "node:crypto";
 import { SENTINEL_HEADERS, fetchSentinelHeaders } from "./sentinel.js";
+import { uploadImageReferences, imageReferenceContent } from "./imageReferences.js";
 
 const MAX_SSE_BYTES = 16 * 1024 * 1024;
 const MAX_CONVERSATION_BYTES = 32 * 1024 * 1024;
@@ -112,7 +113,7 @@ async function runImageConversation(ctx, prompt, sizeHint, signal) {
       partial_query: {
         id: randomUUID(),
         author: { role: "user" },
-        content: { content_type: "text", parts: [prompt] },
+        content: imageReferenceContent(prompt, ctx.attachments || []),
       },
       supports_buffering: true,
       supported_encodings: ["v1"],
@@ -141,8 +142,10 @@ async function runImageConversation(ctx, prompt, sizeHint, signal) {
         id: randomUUID(),
         author: { role: "user" },
         create_time: Date.now() / 1000,
-        content: { content_type: "text", parts: [text] },
+        content: imageReferenceContent(text, ctx.attachments || []),
         metadata: {
+          attachments: (ctx.attachments || []).map(item => ({ id: item.fileId, name: item.name,
+            size: item.size, mime_type: item.mimeType, width: item.width, height: item.height, source: "local" })),
           developer_mode_connector_ids: [],
           selected_github_repos: [],
           selected_all_github_repos: false,
@@ -183,7 +186,8 @@ async function runImageConversation(ctx, prompt, sizeHint, signal) {
   const fileIds = [];
   const sedimentIds = [];
   collectIds(sseText, fileIds, sedimentIds);
-  return { conversationId, fileIds, sedimentIds };
+  const inputs = new Set((ctx.attachments || []).map(item => item.fileId));
+  return { conversationId, fileIds: fileIds.filter(id => !inputs.has(id)), sedimentIds: sedimentIds.filter(id => !inputs.has(id)) };
 }
 
 /** Poll the conversation document until an image_gen record shows up. */
@@ -214,9 +218,9 @@ async function pollConversationImages(ctx, conversationId, initial, { signal, lo
     }
 
     collectIds(text, fileIds, sedimentIds);
-    if (fileIds.length > 0 || sedimentIds.length > 0) {
-      return { fileIds: fileIds.filter((id) => id !== "file_upload"), sedimentIds };
-    }
+    const inputs = new Set((ctx.attachments || []).map(item => item.fileId));
+    const outputs = { fileIds: fileIds.filter(id => id !== "file_upload" && !inputs.has(id)), sedimentIds: sedimentIds.filter(id => !inputs.has(id)) };
+    if (outputs.fileIds.length > 0 || outputs.sedimentIds.length > 0) return outputs;
     if (CONTENT_POLICY_RE.test(text) && /"is_error"\s*:\s*true/.test(text)) {
       throw new ChatGptWebImageError("ChatGPT refused the image request (content policy)", 400);
     }
@@ -297,6 +301,7 @@ export async function generateChatGptWebImageHttp({
   userAgent,
   prompt,
   sizeHint,
+  images = [],
   signal,
   log,
 }) {
@@ -305,6 +310,7 @@ export async function generateChatGptWebImageHttp({
 
   const sentinel = await fetchSentinelHeaders({ baseUrl, accessToken, userAgent, signal });
   const ctx = { baseUrl, accessToken, cookie, userAgent, sentinel };
+  ctx.attachments = await uploadImageReferences(ctx, images, signal || AbortSignal.timeout(120000));
 
   const initial = await runImageConversation(ctx, prompt, sizeHint, signal);
   if (!initial.conversationId && initial.fileIds.length === 0 && initial.sedimentIds.length === 0) {
