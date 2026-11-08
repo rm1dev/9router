@@ -73,7 +73,7 @@ const {
   waitForPortFree,
   waitForPidsExit,
 } = require("./src/cli/utils/launcherProcess");
-const { ensureSqliteRuntime, buildEnvWithRuntime } = require("./hooks/sqliteRuntime");
+const { ensureSqliteRuntime, ensureWreqRuntime, buildEnvWithRuntime } = require("./hooks/sqliteRuntime");
 const { ensureTrayRuntime } = require("./hooks/trayRuntime");
 const args = process.argv.slice(2);
 
@@ -104,10 +104,11 @@ if (args[0] === "connect" || args[0] === "show") {
   return;
 }
 
-// Self-heal SQLite runtime deps (sql.js + better-sqlite3) into ~/.9router/runtime
+// Self-heal SQLite runtime deps (sql.js + better-sqlite3) into ~/.98router/runtime
 // so the server can resolve them via NODE_PATH. Best-effort — sql.js is required,
 // better-sqlite3 is optional. Logs to stderr only on failure.
 try { ensureSqliteRuntime({ silent: true }); } catch {}
+try { ensureWreqRuntime({ silent: true }); } catch {}
 
 // Self-heal tray runtime (systray for macOS/Linux only). Windows skipped.
 try { ensureTrayRuntime({ silent: true }); } catch {}
@@ -138,9 +139,10 @@ const MAX_PORT_ATTEMPTS = 10;
 // return as soon as the condition holds, so the common case costs nothing.
 const PROCESS_EXIT_WAIT_MS = 1000;
 const PORT_RELEASE_WAIT_MS = 3000;
-// Identifiers for killAllAppProcesses - only kill 9router specifically
+// Identifiers for killAllAppProcesses - only kill 9router/98router specifically
 const PROCESS_IDENTIFIERS = [
-  '9router'  // Only package name - avoid killing other apps
+  '98router',
+  '9router'
 ];
 
 // Parse arguments
@@ -219,9 +221,28 @@ function compareVersions(a, b) {
 
 // Get app data dir (matches app/src/lib/dataDir.js convention)
 function getAppDataDir() {
-  return process.platform === "win32"
+  if (process.env.DATA_DIR) return process.env.DATA_DIR;
+  const newDir = process.platform === "win32"
+    ? path.join(process.env.APPDATA || "", "98router")
+    : path.join(os.homedir(), ".98router");
+  const legacyDir = process.platform === "win32"
     ? path.join(process.env.APPDATA || "", "9router")
     : path.join(os.homedir(), ".9router");
+
+  try {
+    if (fs.existsSync(legacyDir) && !fs.existsSync(path.join(newDir, "db", "data.sqlite"))) {
+      fs.mkdirSync(newDir, { recursive: true });
+      fs.cpSync(legacyDir, newDir, { recursive: true, errorOnExist: false });
+      const legacyDb = path.join(legacyDir, "db", "data.sqlite");
+      if (fs.existsSync(legacyDb)) {
+        const backupsDir = path.join(newDir, "db", "backups");
+        fs.mkdirSync(backupsDir, { recursive: true });
+        fs.copyFileSync(legacyDb, path.join(backupsDir, `backup-from-9router-${Date.now()}.sqlite`));
+      }
+    }
+  } catch {}
+
+  return newDir;
 }
 
 // Kill PID from file (best-effort, removes file after)
@@ -303,7 +324,7 @@ function killAllAppProcesses() {
             // Avoids killing editors/grep/strace/cursor that just have "9router" in cmdline.
             const cmd = line.toLowerCase();
             const isAppProcess =
-              (cmd.includes("node") && cmd.includes("9router") && (cmd.includes("cli.js") || cmd.includes("\\9router") || cmd.includes("/9router")))
+              (cmd.includes("node") && (cmd.includes("98router") || cmd.includes("9router")) && (cmd.includes("cli.js") || cmd.includes("\\9router") || cmd.includes("/9router") || cmd.includes("\\98router") || cmd.includes("/98router")))
               || cmd.includes("next-server");
             if (isAppProcess) {
               const match = line.match(/^"(\d+)"/);
@@ -329,7 +350,7 @@ function killAllAppProcesses() {
             // Avoids killing grep/strace/editors/cursor that incidentally match "9router".
             const cmd = line.toLowerCase();
             const isAppProcess =
-              (cmd.includes("node") && cmd.includes("9router") && (cmd.includes("cli.js") || cmd.includes("/9router")))
+              (cmd.includes("node") && (cmd.includes("98router") || cmd.includes("9router")) && (cmd.includes("cli.js") || cmd.includes("/9router") || cmd.includes("/98router")))
               || cmd.includes("next-server");
             if (isAppProcess) {
               const parts = line.trim().split(/\s+/);
@@ -913,7 +934,7 @@ function startServer(updatePromise) {
     if (restartCount >= MAX_RESTARTS) {
       console.error(`\n⚠️  Server crashed ${MAX_RESTARTS} times. Disabling MIT and restarting...`);
       try {
-        const dbPath = path.join(os.homedir(), process.platform === "win32" ? path.join("AppData", "Roaming", "9router", "db.json") : path.join(".9router", "db.json"));
+        const dbPath = path.join(getAppDataDir(), "db.json");
         if (fs.existsSync(dbPath)) {
           const db = JSON.parse(fs.readFileSync(dbPath, "utf-8"));
           if (db.settings) db.settings.mitmEnabled = false;

@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import os from "os";
 import { UPDATER_CONFIG } from "@/shared/constants/config";
+import { DATA_DIR } from "@/lib/dataDir.js";
 
 const KILL_TIMEOUT_MS = 5000;
 const PROCESS_WAIT_MS = 1500;
@@ -11,9 +12,7 @@ const PROCESS_WAIT_MS = 1500;
 function killMitmByPidFile() {
   try {
     const mitmPidFile = path.join(
-      process.platform === "win32"
-        ? path.join(process.env.APPDATA || "", "9router")
-        : path.join(os.homedir(), ".9router"),
+      DATA_DIR,
       "mitm",
       ".mitm.pid"
     );
@@ -97,11 +96,7 @@ function collectAppPids() {
 
 // Copy updater.js into DATA_DIR so npm -g can overwrite node_modules safely
 function getDataDir() {
-  if (process.env.DATA_DIR) return process.env.DATA_DIR;
-  if (process.platform === "win32") {
-    return path.join(process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"), "9router");
-  }
-  return path.join(os.homedir(), ".9router");
+  return DATA_DIR;
 }
 
 function resolveBundledUpdaterPath() {

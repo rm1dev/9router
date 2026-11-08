@@ -23,7 +23,7 @@ import { getApiKeys } from "@/lib/db";
  * @returns {Promise<string>}
  */
 export async function resolveCliApiKey(callerKey) {
-  if (callerKey && callerKey.trim() && callerKey.trim() !== "sk_9router") {
+  if (callerKey && callerKey.trim() && callerKey.trim() !== "sk_9router" && callerKey.trim() !== "sk_98router") {
     return callerKey.trim();
   }
   try {

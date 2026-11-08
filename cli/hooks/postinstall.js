@@ -7,20 +7,27 @@
 // the runtime warm-up; cli.js self-heals it if the server is started later.
 if (process.env.npm_command === "exec") process.exit(0);
 
-const { ensureSqliteRuntime } = require("./sqliteRuntime");
+const { ensureSqliteRuntime, ensureWreqRuntime } = require("./sqliteRuntime");
 const { ensureTrayRuntime } = require("./trayRuntime");
 
 try {
   ensureSqliteRuntime({ silent: false });
-  console.log("[9router] runtime SQLite deps ready");
+  console.log("[98router] runtime SQLite deps ready");
 } catch (e) {
-  console.warn(`[9router] runtime warm-up skipped: ${e.message}`);
+  console.warn(`[98router] runtime warm-up skipped: ${e.message}`);
+}
+
+try {
+  ensureWreqRuntime({ silent: false });
+  console.log("[98router] runtime wreq-js ready");
+} catch (e) {
+  console.warn(`[98router] runtime wreq-js skipped: ${e.message}`);
 }
 
 try {
   ensureTrayRuntime({ silent: false });
 } catch (e) {
-  console.warn(`[9router] tray runtime skipped: ${e.message}`);
+  console.warn(`[98router] tray runtime skipped: ${e.message}`);
 }
 
 process.exit(0);

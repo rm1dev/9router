@@ -22,8 +22,8 @@ export async function notionRequest(cookie, endpoint, data, { signal, userId, sp
     });
   }
   let session;
-  try { session = await sessionPromise; } catch {
-    throw Object.assign(new Error("Notion Web requires the wreq-js native runtime. Reinstall the optional runtime dependency."), { status: 503 });
+  try { session = await sessionPromise; } catch (err) {
+    throw Object.assign(new Error(`Notion Web requires the wreq-js native runtime (${err?.message || "load failed"}). Reinstall the runtime dependency.`), { status: 503 });
   }
   const response = await session.fetch(`${NOTION_ORIGIN}/api/v3/${endpoint}`, {
     method: "POST",

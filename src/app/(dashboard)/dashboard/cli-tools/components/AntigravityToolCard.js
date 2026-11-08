@@ -333,7 +333,7 @@ export default function AntigravityToolCard({
                   </select>
                 ) : (
                   <span className="min-w-0 rounded bg-surface/40 px-2 py-2 text-xs text-text-muted sm:py-1.5">
-                    {cloudEnabled ? "No API keys - Create one in Keys page" : "sk_9router (default)"}
+                    {cloudEnabled ? "No API keys - Create one in Keys page" : "sk_98router (default)"}
                   </span>
                 )}
               </div>

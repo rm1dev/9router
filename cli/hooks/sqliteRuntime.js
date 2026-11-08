@@ -14,12 +14,13 @@ const [NODE_MAJOR] = process.versions.node.split(".").map(Number);
 const USE_NAPI_BUILD = NODE_MAJOR >= 22;
 const BETTER_SQLITE3_VERSION = USE_NAPI_BUILD ? "13.0.3" : "12.6.2";
 const SQL_JS_VERSION = "1.14.1";
+const WREQ_JS_VERSION = "3.2.0";
 
 function getDataDir() {
   if (process.env.DATA_DIR) return process.env.DATA_DIR;
   return process.platform === "win32"
-    ? path.join(process.env.APPDATA || os.homedir(), "9router")
-    : path.join(os.homedir(), ".9router");
+    ? path.join(process.env.APPDATA || os.homedir(), "98router")
+    : path.join(os.homedir(), ".98router");
 }
 
 function getRuntimeDir() {
@@ -38,10 +39,10 @@ function ensureRuntimeDir() {
   const pkgPath = path.join(dir, "package.json");
   if (!fs.existsSync(pkgPath)) {
     fs.writeFileSync(pkgPath, JSON.stringify({
-      name: "9router-runtime",
+      name: "98router-runtime",
       version: "1.0.0",
       private: true,
-      description: "User-writable runtime deps for 9router (better-sqlite3 native binary)",
+      description: "User-writable runtime deps for 98router (better-sqlite3 and wreq-js native binaries)",
     }, null, 2));
   }
   return dir;
@@ -161,6 +162,15 @@ function ensureSqliteRuntime({ silent = false } = {}) {
   };
 }
 
+function ensureWreqRuntime({ silent = false } = {}) {
+  ensureRuntimeDir();
+  if (hasModule("wreq-js")) {
+    return true;
+  }
+  if (!silent) console.log("⏳ Installing wreq-js runtime engine...");
+  return npmInstall([`wreq-js@^${WREQ_JS_VERSION}`], { silent });
+}
+
 // Inject runtime + bundled node_modules into NODE_PATH so child Node processes
 // resolve sql.js (bundled in bin/app/node_modules) and better-sqlite3 (runtime).
 function buildEnvWithRuntime(baseEnv = process.env) {
@@ -173,6 +183,7 @@ function buildEnvWithRuntime(baseEnv = process.env) {
 
 module.exports = {
   ensureSqliteRuntime,
+  ensureWreqRuntime,
   buildEnvWithRuntime,
   getRuntimeDir,
   getRuntimeNodeModules,

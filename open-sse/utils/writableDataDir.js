@@ -1,18 +1,26 @@
-// Resolve a writable data directory: DATA_DIR first, then ~/.9router, then
+// Resolve a writable data directory: DATA_DIR first, then ~/.98router / ~/.9router, then
 // tmpdir. Some installs point DATA_DIR at root-owned paths (e.g. /var/lib) that
 // the server process cannot write browser profiles or runtime installs into.
 
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { getDataDir } from "../../src/lib/dataDir.js";
 
 let cached = null;
 
 export function getWritableDataDir() {
   if (cached) return cached;
+  let primaryDir = null;
+  try {
+    primaryDir = getDataDir();
+  } catch {}
   const candidates = [
+    primaryDir,
     process.env.DATA_DIR,
+    path.join(os.homedir(), ".98router"),
     path.join(os.homedir(), ".9router"),
+    path.join(os.tmpdir(), "98router"),
     path.join(os.tmpdir(), "9router"),
   ].filter(Boolean);
   for (const base of candidates) {

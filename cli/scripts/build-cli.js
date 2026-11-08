@@ -289,6 +289,8 @@ function buildCliPackage() {
   ensureModuleInBundle("open");
   // ws stays external to preserve its masking implementation in production.
   ensureModuleInBundle("ws");
+  // wreq-js is required for browser TLS impersonation (Notion Web, Grok Web, OpenCode).
+  ensureModuleInBundle("wreq-js");
   const betterDir = path.join(cliAppDir, "node_modules", "better-sqlite3");
   if (fs.existsSync(betterDir)) {
     fs.rmSync(betterDir, { recursive: true, force: true });

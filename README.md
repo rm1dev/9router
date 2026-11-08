@@ -1,29 +1,49 @@
 <div align="center">
-  <img src="./images/9router.png?1" alt="9Router Dashboard" width="800"/>
+  <img src="./images/9router.png?1" alt="98Router Dashboard" width="800"/>
   
-  # 9Router - FREE AI Router & Token Saver
+  # 98Router - Enhanced FREE AI Router & Token Saver
+
+  **An upgraded, high-performance fork of [9Router](https://github.com/decolua/9router) with GapCode/GapGPT, Notion Web AI, Reference Image Editing, and Next-Gen Kiro Streaming.**
   
   **Never stop coding. Save 20-40% tokens with RTK + auto-fallback to FREE & cheap AI models.**
   
-  **Connect All AI Code Tools (Claude Code, Cursor, Antigravity, Copilot, Codex, Gemini, OpenCode, Cline, OpenClaw...) to 40+ AI Providers & 100+ Models.**
+  **Connect All AI Code Tools (Claude Code, Cursor, Antigravity, Copilot, Codex, Gemini, OpenCode, Cline, OpenClaw...) to 45+ AI Providers & 120+ Models.**
   
-  [![npm](https://img.shields.io/npm/v/9router.svg)](https://www.npmjs.com/package/9router)
-  [![Downloads](https://img.shields.io/npm/dm/9router.svg)](https://www.npmjs.com/package/9router)
-  [![Docker Pulls](https://img.shields.io/docker/pulls/decolua/9router.svg?logo=docker&label=Docker%20pulls)](https://hub.docker.com/r/decolua/9router)
-  [![GHCR](https://img.shields.io/badge/GHCR-decolua%2F9router-blue?logo=github)](https://github.com/decolua/9router/pkgs/container/9router)
-  [![License](https://img.shields.io/npm/l/9router.svg)](https://github.com/decolua/9router/blob/main/LICENSE)
+  [![npm](https://img.shields.io/npm/v/98router.svg)](https://www.npmjs.com/package/98router)
+  [![Downloads](https://img.shields.io/npm/dm/98router.svg)](https://www.npmjs.com/package/98router)
+  [![License](https://img.shields.io/npm/l/98router.svg)](https://github.com/rm1dev/9router/blob/feat/gapcode/LICENSE)
 
-<a href="https://trendshift.io/repositories/22628" target="_blank"><img src="https://trendshift.io/api/badge/repositories/22628" alt="decolua%2F9router | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-
-[🚀 Quick Start](#-quick-start) • [💡 Features](#-key-features) • [📖 Setup](#-setup-guide) • [🌐 Website](https://9router.com)
-
-[🇧🇷 Português (Brasil)](./i18n/README.pt-BR.md) • [🇻🇳 Tiếng Việt](./i18n/README.vi.md) • [🇨🇳 中文](./i18n/README.zh-CN.md) • [🇯🇵 日本語](./i18n/README.ja-JP.md) • [🇷🇺 Русский](./i18n/README.ru.md) • [🇹🇭 ไทย](./i18n/README.th.md) • [🇮🇷 فارسی](./i18n/README.fa_IR.md) • [🇮🇩 Indonesia](./i18n/README.id-ID.md) • [🇪🇸 Español](./i18n/README.es.md) • [🇫🇷 Français](./i18n/README.fr.md)
+[🚀 Quick Start](#-quick-start) • [💡 Features](#-key-features) • [📖 Setup](#-setup-guide) • [⚡ Why 98Router?](#-why-98router-instead-of-9router) • [🇷 فارسی](./i18n/README.fa_IR.md)
 
 </div>
 
 ---
 
-## 🤔 Why 9Router?
+## ⚡ Why 98Router instead of 9Router?
+
+> **98Router is a specialized branch/fork of 9Router.** If you're wondering whether to install standard 9Router or 98Router: **98Router includes everything from upstream 9Router plus powerful extra capabilities**:
+>
+> 1. **🔥 Full GapCode & GapGPT Support (OAuth & Web)**:
+>    - Native GapGPT OAuth CLI integration with automatic loopback proxy on port 1455 (`originator: "codex_cli_rs"`).
+>    - Directly routes to `gg/gpt-6-astra`, `gg/kimi-3`, `gg/gapgpt-qwen-3.6`, `gg/glm-5.3`, etc.
+>    - Real-time quota & usage tracking via `/codex/usage`.
+>    - **GapGPT Web** session provider with cookie login, auto-catalog fetching, and **AI Web image generation**.
+> 2. **📝 Notion Web AI Provider (`notion-web`)**:
+>    - Full integration with Notion Web AI via session cookies/tokens.
+>    - Multi-turn thread continuation, chat completions, and usage tracking without costly enterprise API fees.
+> 3. **🎨 Reference Images & `/images/edits` Endpoint**:
+>    - Reference image support for image providers (ChatGPT Web, Codex, Gemini, OpenAI).
+>    - Standard `POST /images/edits` endpoint for image inpainting, variation, and multi-modal image-to-image prompts.
+> 4. **🧠 Kiro 1.2.56+ MITM & Responses Transport**:
+>    - Fully compatible MITM proxy handler for Kiro 1.2.56+.
+>    - Native OpenAI Responses transport translation.
+>    - Incremental streaming for thinking/reasoning blocks and optimized CLI tool mappings.
+> 5. **📊 Redesigned Grouped Quota & Limits UI**:
+>    - Manage provider limits grouped by provider with responsive dialogs and a compact status toolbar.
+
+---
+
+## 🤔 Why 98Router?
 
 **Stop wasting money, tokens and hitting limits:**
 
@@ -33,7 +53,7 @@
 - ❌ Expensive APIs ($20-50/month per provider)
 - ❌ Manual switching between providers
 
-**9Router solves this:**
+**98Router solves this:**
 
 - ✅ **RTK Token Saver** - Auto-compress tool_result content, save 20-40% tokens per request
 - ✅ **Maximize subscriptions** - Track quota, use every bit before reset
@@ -53,18 +73,18 @@
        │ http://localhost:20128/v1
        ↓
 ┌─────────────────────────────────────────────┐
-│           9Router (Smart Router)            │
+│           98Router (Smart Router)           │
 │  • RTK Token Saver (cut tool_result tokens) │
 │  • Format translation (OpenAI ↔ Claude)     │
 │  • Quota tracking                           │
 │  • Auto token refresh                       │
 └──────┬──────────────────────────────────────┘
        │
-       ├─→ [Tier 1: SUBSCRIPTION] Claude Code, Codex, GitHub Copilot
+       ├─→ [Tier 1: SUBSCRIPTION] Claude Code, Codex, GapGPT, GitHub Copilot
        │   ↓ quota exhausted
        ├─→ [Tier 2: CHEAP] GLM ($0.6/1M), MiniMax ($0.2/1M)
        │   ↓ budget limit
-       └─→ [Tier 3: FREE] Kiro, OpenCode Free, Vertex ($300 credits)
+       └─→ [Tier 3: FREE] Kiro, OpenCode Free, Vertex ($300 credits), Notion Web
 
 Result: Never stop coding, minimal cost + 20-40% token savings via RTK
 ```
@@ -76,15 +96,15 @@ Result: Never stop coding, minimal cost + 20-40% token savings via RTK
 **1. Install globally:**
 
 ```bash
-npm install -g 9router
-9router
+npm install -g 98router
+98router
 ```
 
 🎉 Dashboard opens at `http://localhost:20128`
 
 **2. Connect a FREE provider (no signup needed):**
 
-Dashboard → Providers → Connect **Kiro AI** (~50 credits/month free: Claude 4.5 + GLM-5 + MiniMax) or **OpenCode Free** (no auth) → Done!
+Dashboard → Providers → Connect **Kiro AI** (~50 credits/month free: Claude 4.5 + GLM-5 + MiniMax), **GapGPT**, or **OpenCode Free** (no auth) → Done!
 
 **3. Use in your CLI tool:**
 
@@ -251,7 +271,7 @@ Default URLs:
 
 ## 🛠️ Supported CLI Tools
 
-9Router works seamlessly with all major AI coding tools:
+98Router works seamlessly with all major AI coding tools:
 
 <div align="center">
   <table>
@@ -346,6 +366,10 @@ Default URLs:
   <table>
     <tr>
       <td align="center" width="120">
+        <img src="./public/providers/gapgpt.png" width="60" alt="GapGPT"/><br/>
+        <b>GapGPT</b>
+      </td>
+      <td align="center" width="120">
         <img src="./public/providers/claude.png" width="60" alt="Claude Code"/><br/>
         <b>Claude-Code</b>
       </td>
@@ -365,9 +389,24 @@ Default URLs:
         <img src="./public/providers/cursor.png" width="60" alt="Cursor"/><br/>
         <b>Cursor</b>
       </td>
-      <td align="center" width="120">
-        <img src="./public/providers/kimchi.png" width="60" alt="Kimchi"/><br/>
-        <b>Kimchi</b>
+    </tr>
+  </table>
+</div>
+
+### 🌐 Web & Session Providers (Exclusive)
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="150">
+        <img src="./public/providers/gapgpt.png" width="60" alt="GapGPT Web"/><br/>
+        <b>GapGPT Web</b><br/>
+        <sub>Cookie auth • Model fetch<br/>Chat & Image Gen</sub>
+      </td>
+      <td align="center" width="150">
+        <img src="./public/providers/notion-web.png" width="60" alt="Notion Web"/><br/>
+        <b>Notion Web</b><br/>
+        <sub>Session auth • Thread continuation<br/>Usage tracking</sub>
       </td>
     </tr>
   </table>
@@ -537,6 +576,9 @@ a third party under a provider named "Self-hosted".
 | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | 🚀 **RTK Token Saver** ([RTK](https://github.com/rtk-ai/rtk) ⭐40K)               | Compress tool outputs (`git diff`, `grep`, `ls`, `tree`...) before sending to LLM        | Save **20-40% input tokens** per request          |
 | 🧠 **Headroom Token Saver** ([Headroom](https://github.com/chopratejas/headroom)) | Optional external `/v1/compress` proxy before provider routing                           | Save more context tokens without changing clients |
+| ⚡ **GapCode / GapGPT (OAuth & Web)**                                              | Full Codex Responses API, port 1455 OAuth proxy, `/codex/usage`, Web image generation    | Access `gpt-6-astra`, `kimi-3` + Web models       |
+| 📝 **Notion Web AI**                                                              | Session cookie auth, thread continuation & token tracking                                | Use Notion AI without paid enterprise keys       |
+| 🎨 **Image Edits & References**                                                   | Reference images & `POST /images/edits` support across ChatGPT Web, Codex, Gemini, etc.  | Multi-modal image variations and edits            |
 | 🪨 **Caveman Mode** ([Caveman](https://github.com/JuliusBrussee/caveman) ⭐52K)   | Inject caveman-speak prompt → LLM replies terse, technical substance preserved           | Save **up to 65% output tokens**                  |
 | 🐴 **Ponytail** ([Ponytail](https://github.com/DietrichGebert/ponytail))          | Inject "lazy senior dev" prompt → LLM writes minimal, YAGNI-first code (Lite/Full/Ultra) | **Fewer output tokens, less refactoring**         |
 | 🎯 **Smart 3-Tier Fallback**                                                      | Auto-route: Subscription → Cheap → Free                                                  | Never stop coding, zero downtime                  |
@@ -550,7 +592,7 @@ a third party under a provider named "Self-hosted".
 | 📊 **Usage Analytics**                                                            | Track tokens, cost, trends over time                                                     | Optimize spending                                 |
 | 🌐 **Deploy Anywhere**                                                            | Localhost, VPS, Docker, Cloudflare Workers                                               | Flexible deployment options                       |
 
-Set `X-9Router-Token-Saver: off` to bypass all token savers for one chat request.
+Set `X-98Router-Token-Saver: off` (or `X-9Router-Token-Saver: off`) to bypass all token savers for one chat request.
 
 <details>
 <summary><b>📖 Feature Details</b></summary>
@@ -572,10 +614,10 @@ With RTK:    28K tokens sent to LLM   (40% saved · same context · same answer)
 
 ### 🧠 Headroom Token Saver
 
-Headroom is optional and runs separately. 9Router calls Headroom's local `/v1/compress` endpoint, then keeps normal routing, fallback, auth, and usage tracking:
+Headroom is optional and runs separately. 98Router calls Headroom's local `/v1/compress` endpoint, then keeps normal routing, fallback, auth, and usage tracking:
 
 ```
-Client → 9Router → Headroom /v1/compress → 9Router → provider
+Client → 98Router → Headroom /v1/compress → 98Router → provider
 ```
 
 Local setup:
@@ -597,7 +639,7 @@ http://headroom:8787
 http://host.docker.internal:8787
 ```
 
-If Headroom is down or returns an error, 9Router fails open and sends the original request.
+If Headroom is down or returns an error, 98Router fails open and sends the original request.
 
 ### 🐴 Ponytail (Lazy Senior Dev)
 
@@ -639,7 +681,7 @@ Combo: "my-coding-stack"
 Seamless translation between formats:
 
 - **OpenAI** ↔ **Claude** ↔ **Gemini** ↔ **Cursor** ↔ **Kiro** ↔ **Vertex** ↔ **Antigravity** ↔ **Ollama** ↔ **OpenAI Responses**
-- Your CLI tool sends OpenAI format → 9Router translates → Provider receives native format
+- Your CLI tool sends OpenAI format → 98Router translates → Provider receives native format
 - Works with any tool that supports custom OpenAI endpoints
 
 ### 👥 Multi-Account Support
@@ -693,13 +735,13 @@ Seamless translation between formats:
 > **💡 IMPORTANT - Understanding Dashboard Costs:**
 >
 > The "cost" displayed in Usage Analytics is **for tracking and comparison purposes only**.
-> 9Router itself **never charges** you anything. You only pay providers directly (if using paid services).
+> 98Router itself **never charges** you anything. You only pay providers directly (if using paid services).
 >
 > **Example:** If your dashboard shows "$290 total cost" while using Kiro free models, this represents
 > what you would have paid using paid APIs directly. Your actual cost = **$0** (Kiro free tier: ~50 credits/mo).
 >
 > Think of it as a "savings tracker" showing how much you're saving by using free models or
-> routing through 9Router!
+> routing through 98Router!
 
 ### 🌐 Deploy Anywhere
 
@@ -717,30 +759,32 @@ Seamless translation between formats:
 | Tier                | Provider              | Cost         | Quota Reset      | Best For                                |
 | ------------------- | --------------------- | ------------ | ---------------- | --------------------------------------- |
 | **🚀 TOKEN SAVER**  | **RTK (built-in)**    | **FREE**     | Always on        | **Save 20-40% tokens on EVERY request** |
-| **💳 SUBSCRIPTION** | Claude Code (Pro/Max) | $20-200/mo   | 5h + weekly      | Already subscribed                      |
+| **💳 SUBSCRIPTION** | GapGPT / GapCode (OAuth) | Included in account | Real-time `/codex/usage` | GPT-6 Astra, Kimi 3, Codex ecosystem |
+|                     | Claude Code (Pro/Max) | $20-200/mo   | 5h + weekly      | Already subscribed                      |
 |                     | Codex (Plus/Pro)      | $20-200/mo   | 5h + weekly      | OpenAI users                            |
 |                     | GitHub Copilot        | $10-19/mo    | Monthly          | GitHub users                            |
 |                     | Cursor IDE            | $20/mo       | Monthly          | Cursor users                            |
 | **💰 CHEAP**        | GLM-5.1 / GLM-4.7     | $0.6/1M      | Daily 10AM       | Budget backup                           |
 |                     | MiniMax M2.7          | $0.2/1M      | 5-hour rolling   | Cheapest option                         |
 |                     | Kimi K2.5             | $9/mo flat   | 10M tokens/mo    | Predictable cost                        |
- | **🆓 FREE**         | Kiro AI               | $0           | 50 credits/mo    | Claude 4.5 + GLM-5 + MiniMax free (paid tiers above) |
+ | **🆓 FREE / WEB**   | Notion Web AI         | $0           | Session-based    | Thread continuation via browser cookies |
+ |                     | Kiro AI               | $0           | 50 credits/mo    | Claude 4.5 + GLM-5 + MiniMax free (paid tiers above) |
  |                     | OpenCode Free         | $0           | Varies*          | No auth, auto-fetch models (list changes over time) |
  |                     | Vertex AI             | $300 credits | New GCP accounts | Gemini 3 Pro + DeepSeek + GLM-5 (use Vertex AI Studio endpoint for free credits) |
 
-**💡 Pro Tip:** RTK + Kiro AI + OpenCode Free combo = **$0 cost + 20-40% token savings**!
+**💡 Pro Tip:** RTK + GapGPT + Kiro AI + OpenCode Free combo = **$0 extra cost + 20-40% token savings**!
 
 ---
 
-### 📊 Understanding 9Router Costs & Billing
+### 📊 Understanding 98Router Costs & Billing
 
-**9Router Billing Reality:**
+**98Router Billing Reality:**
 
-✅ **9Router software = FREE forever** (open source, never charges)  
+✅ **98Router software = FREE forever** (open source, never charges)  
 ✅ **Dashboard "costs" = Display/tracking only** (not actual bills)  
 ✅ **You pay providers directly** (subscriptions or API fees)  
 ✅ **FREE providers stay FREE** (Kiro ~50 credits/mo, OpenCode Free, Vertex $300 credits = $0 within free-tier limits) — note iFlow/Qwen/Gemini CLI free tiers were discontinued in 2026
-❌ **9Router never sends invoices** or charges your card
+❌ **98Router never sends invoices** or charges your card
 
 **How Cost Display Works:**
 
@@ -762,10 +806,10 @@ Reality Check:
 
 **Payment Rules:**
 
-- **Subscription providers** (Claude Code, Codex): Pay them directly via their websites
-- **Cheap providers** (GLM, MiniMax): Pay them directly, 9Router just routes
+- **Subscription providers** (Claude Code, Codex, GapGPT): Pay them directly via their websites
+- **Cheap providers** (GLM, MiniMax): Pay them directly, 98Router just routes
 - **FREE providers** (iFlow, Kiro, Qwen): Genuinely free forever, no hidden charges
-- **9Router**: Never charges anything, ever
+- **98Router**: Never charges anything, ever
 
 ---
 
@@ -844,7 +888,7 @@ Access via: WhatsApp, Telegram, Slack, Discord, iMessage, Signal...
 <details>
 <summary><b>📊 Why does my dashboard show high costs?</b></summary>
 
-The dashboard tracks your token usage and displays **estimated costs** as if you were using paid APIs directly. This is **not actual billing** - it's a reference to show how much you're saving by using free models or existing subscriptions through 9Router.
+The dashboard tracks your token usage and displays **estimated costs** as if you were using paid APIs directly. This is **not actual billing** - it's a reference to show how much you're saving by using free models or existing subscriptions through 98Router.
 
 **Example:**
 
@@ -858,32 +902,33 @@ The cost display is a "savings tracker" to help you understand your usage patter
 </details>
 
 <details>
-<summary><b>💳 Will I be charged by 9Router?</b></summary>
+<summary><b>💳 Will I be charged by 98Router?</b></summary>
 
-**No.** 9Router is free, open-source software that runs on your own computer. It never charges you anything.
+**No.** 98Router is free, open-source software that runs on your own computer. It never charges you anything.
 
 **You only pay:**
 
-- ✅ **Subscription providers** (Claude Code $20/mo, Codex $20-200/mo) → Pay them directly on their websites
-- ✅ **Cheap providers** (GLM, MiniMax) → Pay them directly, 9Router just routes your requests
-- ❌ **9Router itself** → **Never charges anything, ever**
+- ✅ **Subscription providers** (Claude Code $20/mo, Codex $20-200/mo, GapGPT) → Pay them directly on their websites
+- ✅ **Cheap providers** (GLM, MiniMax) → Pay them directly, 98Router just routes your requests
+- ❌ **98Router itself** → **Never charges anything, ever**
 
-9Router is a local proxy/router. It doesn't have your credit card, can't send invoices, and has no billing system. It's completely free software.
+98Router is a local proxy/router. It doesn't have your credit card, can't send invoices, and has no billing system. It's completely free software.
 
 </details>
 
 <details>
 <summary><b>🆓 Are FREE providers really unlimited?</b></summary>
 
-**Mostly!** The current FREE providers (Kiro, OpenCode Free, Vertex) are genuinely free, but free tiers have limits:
+**Mostly!** The current FREE providers (Kiro, OpenCode Free, Vertex, Notion Web) are genuinely free, but free tiers have limits:
 
 These are free services offered by those respective companies:
 
 - **Kiro AI**: ~50 credits/month free (plus 500 trial credits for new accounts in the first 30 days) via AWS Builder ID / Google / GitHub OAuth. Paid tiers available above that.
 - **OpenCode Free**: No-auth passthrough proxy, models auto-fetched from `opencode.ai/zen/v1/models`. The free model list fluctuates over time (some models free only for limited promos) — subject to change without notice.
 - **Vertex AI**: $300 free credits for new Google Cloud accounts (90 days). Since Mar 2026 the Gemini API endpoint no longer consumes these credits — use the **Vertex AI Studio** endpoint instead.
+- **Notion Web AI**: Web session-based access with multi-turn thread continuation.
 
-9Router just routes your requests to them - there's no "catch" or future billing from 9Router itself. They're truly free services, and 9Router makes them easy to use with fallback support.
+98Router just routes your requests to them - there's no "catch" or future billing from 98Router itself. They're truly free services, and 98Router makes them easy to use with fallback support.
 
 **Discontinued free tiers (no longer recommended):**
 
@@ -918,7 +963,7 @@ These are free services offered by those respective companies:
 
 3. **Use subscription providers last:**
    - Only if you already have them
-   - 9Router helps maximize their value through quota tracking
+   - 98Router helps maximize their value through quota tracking
 
 **Result:** Most users can operate at $0/month using only free tiers!
 
@@ -927,22 +972,22 @@ These are free services offered by those respective companies:
 <details>
 <summary><b>📈 What if my usage suddenly spikes?</b></summary>
 
-9Router's smart fallback prevents surprise charges:
+98Router's smart fallback prevents surprise charges:
 
 **Scenario:** You're on a coding sprint and blow through your quotas
 
-**Without 9Router:**
+**Without 98Router:**
 
 - ❌ Hit rate limit → Work stops → Frustration
 - ❌ Or: Accidentally rack up huge API bills
 
-**With 9Router:**
+**With 98Router:**
 
 - ✅ Subscription hits limit → Auto-fallback to cheap tier
 - ✅ Cheap tier gets expensive → Auto-fallback to free tier
 - ✅ Never stop coding → Predictable costs
 
-**You're in control:** Set spending limits per provider in dashboard, and 9Router respects them.
+**You're in control:** Set spending limits per provider in dashboard, and 98Router respects them.
 
 </details>
 
@@ -967,7 +1012,25 @@ Models:
   cc/claude-haiku-4-5-20251001
 ```
 
-**Pro Tip:** Use Opus for complex tasks, Sonnet for speed. 9Router tracks quota per model!
+**Pro Tip:** Use Opus for complex tasks, Sonnet for speed. 98Router tracks quota per model!
+
+### GapCode / GapGPT (Plus/Pro)
+
+```bash
+Dashboard → Providers → Connect GapGPT
+→ OAuth CLI login (port 1455 loopback)
+→ Live quota tracking via /codex/usage
+
+Models:
+  gg/gpt-6-astra
+  gg/gpt-6.1-sol
+  gg/kimi-3
+  gg/gapgpt-qwen-3.6
+  gg/glm-5.3
+  gg/deepseek-v4-flash
+```
+
+**Pro Tip:** Uses native OpenAI Responses transport. For web models and image generation, connect **GapGPT Web** via Web Login.
 
 ### OpenAI Codex (Plus/Pro)
 
@@ -1071,6 +1134,19 @@ Models:
 
 **Pro Tip:** Best free option for Claude. No API key, no payment, fully unlimited.
 
+### Notion Web AI (Free / Session-based)
+
+```bash
+Dashboard → Connect Notion Web
+→ Web login / cookie session
+→ Multi-turn chat & thread continuation
+
+Models:
+  notion-web/notion-ai
+```
+
+**Pro Tip:** Great for document summarization, coding assistance, and reasoning without official enterprise API tokens.
+
 ### OpenCode Free (No auth, auto-fetch models)
 
 ```bash
@@ -1166,7 +1242,7 @@ Cost: $0 forever (+ 20-40% token savings via RTK)!
 ```
 Settings → Models → Advanced:
   OpenAI API Base URL: http://localhost:20128/v1
-  OpenAI API Key: [from 9router dashboard]
+  OpenAI API Key: [from 98router dashboard]
   Model: cc/claude-opus-4-7
 ```
 
@@ -1179,7 +1255,7 @@ Edit `~/.claude/config.json`:
 ```json
 {
   "anthropic_api_base": "http://localhost:20128/v1",
-  "anthropic_api_key": "your-9router-api-key"
+  "anthropic_api_key": "your-98router-api-key"
 }
 ```
 
@@ -1187,7 +1263,7 @@ Edit `~/.claude/config.json`:
 
 ```bash
 export OPENAI_BASE_URL="http://localhost:20128"
-export OPENAI_API_KEY="your-9router-api-key"
+export OPENAI_API_KEY="your-98router-api-key"
 
 codex "your prompt"
 ```
@@ -1207,15 +1283,15 @@ Dashboard → CLI Tools → OpenClaw → Select Model → Apply
   "agents": {
     "defaults": {
       "model": {
-        "primary": "9router/kr/claude-sonnet-4.5"
+        "primary": "98router/kr/claude-sonnet-4.5"
       }
     }
   },
   "models": {
     "providers": {
-      "9router": {
+      "98router": {
         "baseUrl": "http://127.0.0.1:20128/v1",
-        "apiKey": "sk_9router",
+        "apiKey": "sk_98router",
         "api": "openai-completions",
         "models": [
           {
@@ -1229,7 +1305,7 @@ Dashboard → CLI Tools → OpenClaw → Select Model → Apply
 }
 ```
 
-> **Note:** OpenClaw only works with local 9Router. Use `127.0.0.1` instead of `localhost` to avoid IPv6 resolution issues.
+> **Note:** OpenClaw only works with local 98Router. Use `127.0.0.1` instead of `localhost` to avoid IPv6 resolution issues.
 
 ### Cline / Continue / RooCode
 
@@ -1249,15 +1325,15 @@ Model: cc/claude-opus-4-7
 
 ```bash
 # Clone and install
-git clone https://github.com/decolua/9router.git
-cd 9router
+git clone https://github.com/rm1dev/9router.git 98router
+cd 98router
 npm install
 npm run build
 
 # Configure
 export JWT_SECRET="your-secure-secret-change-this"
 export INITIAL_PASSWORD="your-password"
-export DATA_DIR="/var/lib/9router"
+export DATA_DIR="/var/lib/98router"
 export PORT="20128"
 export HOSTNAME="0.0.0.0"
 export NODE_ENV="production"
@@ -1271,39 +1347,21 @@ npm run start
 
 # Or use PM2
 npm install -g pm2
-pm2 start npm --name 9router -- start
+pm2 start npm --name 98router -- start
 pm2 save
 pm2 startup
 ```
 
 ### Docker
 
-Published images (multi-platform `linux/amd64` + `linux/arm64`):
-
-- Docker Hub: [`decolua/9router`](https://hub.docker.com/r/decolua/9router)
-- GHCR: [`ghcr.io/decolua/9router`](https://github.com/decolua/9router/pkgs/container/9router)
-
-**Quick start (use published image):**
+**Build and run from source:**
 
 ```bash
-docker run -d \
-  --name 9router \
-  -p 20128:20128 \
-  -v "$HOME/.9router:/app/data" \
-  -e DATA_DIR=/app/data \
-  decolua/9router:latest
-```
-
-→ Open http://localhost:20128
-
-**Build from source (dev):**
-
-```bash
-git clone https://github.com/decolua/9router.git
-cd 9router/app
-docker build -t 9router .
-docker run -d --name 9router -p 20128:20128 \
-  -v "$HOME/.9router:/app/data" -e DATA_DIR=/app/data 9router
+git clone https://github.com/rm1dev/9router.git 98router
+cd 98router
+docker build -t 98router .
+docker run -d --name 98router -p 20128:20128 \
+  -v "$HOME/.98router:/app/data" -e DATA_DIR=/app/data 98router
 ```
 
 **Container defaults:**
@@ -1314,21 +1372,20 @@ docker run -d --name 9router -p 20128:20128 \
 **Useful commands:**
 
 ```bash
-docker logs -f 9router
-docker restart 9router
-docker stop 9router && docker rm 9router
-docker pull decolua/9router:latest   # update to latest
+docker logs -f 98router
+docker restart 98router
+docker stop 98router && docker rm 98router
 ```
 
-**Data persistence:** `$HOME/.9router/db/data.sqlite` on host ↔ `/app/data/db/data.sqlite` in container.
+**Data persistence:** `$HOME/.98router/db/data.sqlite` on host ↔ `/app/data/db/data.sqlite` in container.
 
 ### Environment Variables
 
 | Variable                                             | Default                                  | Description                                                                         |
 | ---------------------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------- |
-| `JWT_SECRET`                                         | Auto-generated (`~/.9router/jwt-secret`) | JWT signing secret for dashboard auth cookie (override to share across instances)   |
+| `JWT_SECRET`                                         | Auto-generated (`~/.98router/jwt-secret`) | JWT signing secret for dashboard auth cookie (override to share across instances)   |
 | `INITIAL_PASSWORD`                                   | `123456`                                 | First login password when no saved hash exists                                      |
-| `DATA_DIR`                                           | `~/.9router`                             | Main app data location (SQLite at `$DATA_DIR/db/data.sqlite`)                       |
+| `DATA_DIR`                                           | `~/.98router`                             | Main app data location (SQLite at `$DATA_DIR/db/data.sqlite`)                       |
 | `PORT`                                               | framework default                        | Service port (`20128` in examples)                                                  |
 | `HOSTNAME`                                           | framework default                        | Bind host (Docker defaults to `0.0.0.0`)                                            |
 | `NODE_ENV`                                           | runtime default                          | Set `production` for deploy                                                         |
@@ -1356,7 +1413,7 @@ Notes:
 - Main app state: `${DATA_DIR}/db/data.sqlite` (SQLite — providers, combos, aliases, keys, settings, usage history)
 - Auto backups: `${DATA_DIR}/db/backups/`
 - Optional request/translator logs: `<repo>/logs/...` when `ENABLE_REQUEST_LOGS=true`
-- Both `${DATA_DIR}` and `~/.9router` resolve to the same location in a Docker container — the symlink `/root/.9router -> /app/data` is created at build time.
+- Both `${DATA_DIR}` and `~/.98router` resolve to the same location in a Docker container — the symlink `/root/.98router -> /app/data` is created at build time.
 
 </details>
 
@@ -1366,6 +1423,26 @@ Notes:
 
 <details>
 <summary><b>View all available models</b></summary>
+
+**GapGPT / GapCode (`gg/`)** - Plus/Pro (OAuth):
+
+- `gg/gpt-6-astra`
+- `gg/gpt-6.1-sol`
+- `gg/gpt-6-luna`
+- `gg/gpt-6-sol`
+- `gg/kimi-3`
+- `gg/glm-5.3`
+- `gg/glm-5.3-flash`
+- `gg/glm-5.2`
+- `gg/deepseek-v4-flash`
+- `gg/deepseek-v4.1-flash`
+- `gg/deepseek-v4-pro`
+- `gg/grok-4.6`
+- `gg/claude-fable-5`
+
+**Notion Web (`notion-web/`)** - Web session:
+
+- `notion-web/notion-ai`
 
 **Claude Code (`cc/`)** - Pro/Max:
 
@@ -1453,7 +1530,7 @@ Notes:
 
 **OAuth token expired**
 
-- Auto-refreshed by 9Router
+- Auto-refreshed by 98Router
 - If issues persist: Dashboard → Provider → Reconnect
 
 **High costs**
@@ -1546,12 +1623,13 @@ Thanks to all contributors who helped make 9Router better!
 
 Built on the shoulders of giants:
 
+- **[9Router](https://github.com/decolua/9router)** — The foundational open-source AI router project that 98Router is branched and enhanced from.
 - **[CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI)** — original Go implementation that inspired this JavaScript port.
-- **[RTK](https://github.com/rtk-ai/rtk)** ![Stars](https://img.shields.io/github/stars/rtk-ai/rtk?style=flat&color=yellow) — Rust token-saver. 9Router ports its compression pipeline to JS → **−20-40% input tokens** on every request.
-- **[Caveman](https://github.com/JuliusBrussee/caveman)** ![Stars](https://img.shields.io/github/stars/JuliusBrussee/caveman?style=flat&color=yellow) by **[@JuliusBrussee](https://github.com/JuliusBrussee)** — viral _"why use many token when few token do trick"_. 9Router adapts its prompt → **−65% output tokens**.
-- **[Ponytail](https://github.com/DietrichGebert/ponytail)** ![Stars](https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat&color=yellow) by **[@DietrichGebert](https://github.com/DietrichGebert)** — _"lazy senior dev"_ skill. 9Router injects its YAGNI-first ladder → **fewer tokens, less code, shorter diffs**.
+- **[RTK](https://github.com/rtk-ai/rtk)** ![Stars](https://img.shields.io/github/stars/rtk-ai/rtk?style=flat&color=yellow) — Rust token-saver. 98Router ports its compression pipeline to JS → **−20-40% input tokens** on every request.
+- **[Caveman](https://github.com/JuliusBrussee/caveman)** ![Stars](https://img.shields.io/github/stars/JuliusBrussee/caveman?style=flat&color=yellow) by **[@JuliusBrussee](https://github.com/JuliusBrussee)** — viral _"why use many token when few token do trick"_. 98Router adapts its prompt → **−65% output tokens**.
+- **[Ponytail](https://github.com/DietrichGebert/ponytail)** ![Stars](https://img.shields.io/github/stars/DietrichGebert/ponytail?style=flat&color=yellow) by **[@DietrichGebert](https://github.com/DietrichGebert)** — _"lazy senior dev"_ skill. 98Router injects its YAGNI-first ladder → **fewer tokens, less code, shorter diffs**.
 
-Huge thanks to these authors — without their work, 9Router's token-saving features wouldn't exist. ⭐ them on GitHub!
+Huge thanks to these authors — without their work, 98Router's token-saving features wouldn't exist. ⭐ them on GitHub!
 
 ---
 
