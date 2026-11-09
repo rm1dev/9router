@@ -154,72 +154,62 @@ async function pipeTransformedSSE(routerRes, res, transformFn, state) {
  * @param {Function} transformFn - (parsedChunk, state) => Uint8Array|Uint8Array[]|null
  * @param {object} state - Mutable state object shared across chunks and flush
  */
-async function pipeTransformedEventStream(routerRes, res, transformFn, state) {
+async function pipeTransformedEventStream(routerRes, res, transformFn, state, responseHeaders = {}) {
+  // Router errors are JSON, not SSE. Preserve their status/body instead of
+  // swallowing them and flushing a successful, empty EventStream response.
+  if (!routerRes.ok) {
+    return pipeSSE(routerRes, res);
+  }
   const resHeaders = {
+    ...responseHeaders,
     "Content-Type": "application/vnd.amazon.eventstream",
     "Cache-Control": "no-cache",
     "Connection": "keep-alive"
   };
   res.writeHead(200, resHeaders);
 
-  if (!routerRes.body) {
-    res.end(await routerRes.text().catch(() => ""));
-    return;
-  }
-
-  const reader = routerRes.body.getReader();
+  const reader = routerRes.body?.getReader();
   const decoder = new TextDecoder("utf-8", { fatal: false });
   let buffer = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || !trimmed.startsWith("data:")) continue;
-
-      const data = trimmed.slice(5).trim();
-      if (data === "[DONE]") continue;
-
-      if (process.env.DEBUG_MITM) {
-        log(`[SSE in] ${data.slice(0, 200)}`);
-      }
-
-      try {
-        const parsed = JSON.parse(data);
-        const result = transformFn(parsed, state);
-        if (result != null) {
-          const outputs = Array.isArray(result) ? result : [result];
-          for (const output of outputs) {
-            if (process.env.DEBUG_MITM) {
-              const len = output.length || output.byteLength || 0;
-              log(`[write binary frame] (${len}B) first 20B: ${Array.from(output.slice(0, 20)).join(',')}`);
-            }
-            res.write(Buffer.from(output));
-          }
-        }
-      } catch {
-        // Skip unparseable lines
-      }
+  function writeFrames(result) {
+    if (result == null) return;
+    for (const output of Array.isArray(result) ? result : [result]) {
+      res.write(Buffer.from(output));
     }
   }
-
-  // Flush: pass null to signal stream end
+  function processLine(line) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) return;
+    const data = trimmed.slice(5).trim();
+    if (!data || data === "[DONE]") return;
+    // Do not silently discard malformed events or transformer failures.
+    writeFrames(transformFn(JSON.parse(data), state));
+  }
   try {
-    const flushed = transformFn(null, state);
-    if (flushed != null) {
-      const outputs = Array.isArray(flushed) ? flushed : [flushed];
-      for (const output of outputs) {
-        res.write(output);
+    if (!reader) throw new Error("Router response has no stream body");
+    if (!routerRes.headers.get("content-type")?.includes("text/event-stream")) {
+      throw new Error("Router returned a non-SSE response");
+    }
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        processLine(line);
       }
     }
-  } catch { /* ignore flush errors */ }
-
+    processLine(buffer + decoder.decode());
+    writeFrames(transformFn(null, state));
+  } catch {
+    // Kiro expects a binary exception after EventStream headers have been sent.
+    // Avoid exposing malformed payloads or transport internals in that exception.
+    writeFrames(transformFn({ error: { message: "Router stream could not be completed" } }, state));
+    await reader?.cancel().catch(() => {});
+  } finally {
+    reader?.releaseLock();
+  }
   res.end();
 }
 

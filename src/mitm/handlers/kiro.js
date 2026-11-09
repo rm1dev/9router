@@ -35,9 +35,11 @@ function crc32(buf) {
 /**
  * Initialize state for the Kiro response translator
  */
-function initKiroState(modelId) {
+function initKiroState(modelId, conversationId = "") {
   return {
     modelId: modelId || null,       // Model name from first chunk
+    conversationId,
+    finishReason: null,
     toolCallInit: {},               // { [index]: { id, name } } — tracks seen tools
     hasToolCalls: false,           // Whether this response uses tool calls
     finishSent: false,             // Whether termination has been emitted
@@ -133,7 +135,7 @@ function encodeHeader(name, value) {
  *   :event-type    = e.g. "assistantResponseEvent"
  *   :content-type  = "application/json"  (initial-response uses x-amz-json-1.0)
  */
-function buildEventStreamFrame(eventType, payload, contentType = "application/json") {
+function buildEventStreamFrame(eventType, payload, contentType = "application/json", messageType = "event") {
   const payloadBuf = Buffer.from(
     typeof payload === "string" ? payload : JSON.stringify(payload),
     "utf8"
@@ -141,8 +143,8 @@ function buildEventStreamFrame(eventType, payload, contentType = "application/js
 
   // All three Smithy system headers are required
   const headersBuf = Buffer.concat([
-    encodeHeader(":message-type", "event"),
-    encodeHeader(":event-type", eventType),
+    encodeHeader(":message-type", messageType),
+    encodeHeader(messageType === "exception" ? ":exception-type" : ":event-type", eventType),
     encodeHeader(":content-type", contentType),
   ]);
   const headersLen = headersBuf.length;
@@ -174,7 +176,7 @@ function withInitialFrame(state, frames) {
   const list = frames == null ? [] : Array.isArray(frames) ? frames : [frames];
   if (state.initialSent) return list.length === 0 ? null : list.length === 1 ? list[0] : list;
   state.initialSent = true;
-  const out = [buildInitialResponseFrame(""), ...list];
+  const out = [buildInitialResponseFrame(state.conversationId), ...list];
   return out.length === 1 ? out[0] : out;
 }
 
@@ -363,18 +365,43 @@ function extractTools(body) {
  * @returns {Uint8Array|Uint8Array[]|null} Binary EventStream frame(s) or null to skip
  */
 function convertOpenAIToKiro(chunk, state) {
+  if (state.finishSent) return null;
+  if (chunk?.error) {
+    state.finishSent = true;
+    return withInitialFrame(state, buildEventStreamFrame(
+      "InternalServerException",
+      { message: chunk.error.message || "Router stream failed" },
+      "application/json",
+      "exception"
+    ));
+  }
   // Flush: ensure clean stream termination
   if (!chunk) {
-    if (state.finishSent) return null;
+    const flushFrames = [];
     // Flush any remaining buffered thinking
-    if (state.inThink && state.thinkBuf) {
-      state.inThink = false;
-      const thinking = state.thinkBuf;
+    if (state.thinkBuf) {
+      const buffered = state.thinkBuf;
       state.thinkBuf = "";
-      return withInitialFrame(state, buildEventStreamFrame("reasoningContentEvent", {
-        content: thinking,
-        modelId: state.modelId || "kiro-unknown"
-      }));
+      flushFrames.push(state.inThink
+        ? buildReasoningFrame(buffered, state)
+        : buildEventStreamFrame("assistantResponseEvent", { content: buffered, modelId: state.modelId }));
+    }
+    state.inThink = false;
+    if (!state.finishReason) {
+      return convertOpenAIToKiro({ error: { message: "Router stream ended without a finish reason" } }, state);
+    }
+    if (!["stop", "tool_calls", "function_call", "length", "content_filter"].includes(state.finishReason)) {
+      return convertOpenAIToKiro({ error: { message: "Router returned an unsupported finish reason" } }, state);
+    }
+    if (["tool_calls", "function_call"].includes(state.finishReason) && !Object.keys(state.toolCallInit).length) {
+      return convertOpenAIToKiro({ error: { message: "Router finished with tool calls but supplied no tools" } }, state);
+    }
+    if (Object.values(state.toolCallInit).some(tool => !tool.id || !tool.name)) {
+      return convertOpenAIToKiro({ error: { message: "Router returned an incomplete tool call" } }, state);
+    }
+    const finishFrames = emitFinish(state);
+    if (finishFrames) {
+      flushFrames.push(...(Array.isArray(finishFrames) ? finishFrames : [finishFrames]));
     }
     return withInitialFrame(state, buildEventStreamFrame("messageStopEvent", {}));
   }
@@ -400,25 +427,28 @@ function convertOpenAIToKiro(chunk, state) {
     for (const tc of delta.tool_calls) {
       const idx = tc.index ?? 0;
 
-      if (tc.id && tc.function?.name && !state.toolCallInit[idx]) {
+      const tool = state.toolCallInit[idx] ||= { id: "", name: "", pending: "", started: false };
+      if (tc.id) tool.id = tc.id;
+      if (tc.function?.name && !tool.started) tool.name += tc.function.name;
+      if (tc.function?.arguments) tool.pending += safeArgsString(tc.function.arguments);
+
+      if (tool.id && tool.name && !tool.started) {
         // First appearance: emit frame with name + id, no input
-        state.toolCallInit[idx] = { id: tc.id, name: tc.function.name };
-        dbg(`toolUseEvent init: ${tc.function.name} (${tc.id})`);
+        tool.started = true;
+        dbg(`toolUseEvent init: ${tool.name} (${tool.id})`);
         frames.push(buildEventStreamFrame("toolUseEvent", {
-          name: tc.function.name,
-          toolUseId: tc.id
+          name: tool.name,
+          toolUseId: tool.id
         }));
       }
 
       // Emit incremental input fragment
-      if (tc.function?.arguments) {
-        const init = state.toolCallInit[idx];
-        dbg(`toolUseEvent fragment: ${tc.function.arguments.slice(0, 100)}`);
+      if (tool.started && tool.pending) {
         frames.push(buildEventStreamFrame("toolUseEvent", {
-          input: tc.function.arguments,
-          name: init?.name || tc.function?.name || "",
-          toolUseId: init?.id || tc.id || ""
+          input: tool.pending,
+          toolUseId: tool.id
         }));
+        tool.pending = "";
       }
     }
   }
@@ -452,10 +482,8 @@ function convertOpenAIToKiro(chunk, state) {
 
   // Handle finish_reason
   if (choice?.finish_reason) {
-    const finishFrames = emitFinish(state);
-    if (finishFrames) {
-      frames.push(...(Array.isArray(finishFrames) ? finishFrames : [finishFrames]));
-    }
+    // Usage often follows this chunk. Seal only when the SSE stream ends.
+    state.finishReason = choice.finish_reason;
   }
 
   if (frames.length === 0) {
@@ -483,8 +511,33 @@ function emitFinish(state) {
         toolUseId: tc.id
       }));
     }
-  } else {
-    // Text-only response: emit messageStopEvent
+  }
+
+  const promptTokens = state.usage?.prompt_tokens || 0;
+  const completionTokens = state.usage?.completion_tokens || 0;
+  const totalTokens = promptTokens + completionTokens;
+  const stopReason = state.finishReason === "length" ? "MAX_TOKENS"
+    : state.finishReason === "content_filter" ? "CONTENT_FILTERED"
+    : state.hasToolCalls ? "TOOL_USE" : "END_TURN";
+
+  // Kiro Runtime requires metadataEvent with stopReason and tokenUsage.
+  // Without stopReason in metadataEvent, Kiro IDE suspects truncation
+  // (q.converse.truncation_suspected) and automatically retries the turn,
+  // causing duplicate responses with slightly different wording to appear!
+  frames.push(buildEventStreamFrame("metadataEvent", {
+    stopReason,
+    tokenUsage: {
+      uncachedInputTokens: promptTokens,
+      outputTokens: completionTokens,
+      totalTokens,
+      cacheReadInputTokens: 0,
+      cacheWriteInputTokens: 0,
+      contextUsagePercentage: 0
+    }
+  }));
+
+  // Also emit legacy messageStopEvent and usageEvent for backward compatibility
+  if (!state.hasToolCalls) {
     frames.push(buildEventStreamFrame("messageStopEvent", {}));
   }
   state.finishSent = true;
@@ -546,9 +599,11 @@ async function intercept(req, res, bodyBuffer, mappedModel) {
     const routerRes = await fetchRouter(openaiBody, "/v1/chat/completions", req.headers);
 
     // 4 + 5: Re-encode response as AWS EventStream binary using standard pipeline
-    const state = initKiroState(mappedModel);
+    const state = initKiroState(mappedModel, body.conversationState?.conversationId || "");
 
-    await pipeTransformedEventStream(routerRes, res, convertOpenAIToKiro, state);
+    await pipeTransformedEventStream(routerRes, res, convertOpenAIToKiro, state, {
+      "x-amzn-kiro-conversation-id": state.conversationId,
+    });
   } catch (error) {
     err(`[Kiro MITM] Request processing failed: ${error.message}`);
     if (!res.headersSent) {
